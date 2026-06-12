@@ -323,9 +323,16 @@ export default function DetailsTab() {
             <NumField label="Amount (negative = out)" suffix="£" value={ev.amount} step={1000}
               onChange={(v) => update((d) => { d.events[ei].amount = v; })} />
             <div className="field" style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
-              <SelectField label="Money in goes to" value={ev.to} options={[
-                { value: 'invest', label: 'Invest' }, { value: 'cash', label: 'Cash' },
-              ]} onChange={(v) => update((d) => { d.events[ei].to = v as 'invest' | 'cash'; })} />
+              {ev.amount >= 0 ? (
+                <SelectField label="Money in goes to" value={ev.to} options={[
+                  { value: 'invest', label: 'Invest' }, { value: 'cash', label: 'Cash' },
+                ]} onChange={(v) => update((d) => { d.events[ei].to = v as 'invest' | 'cash'; })} />
+              ) : (
+                <label className="field" style={{ flex: 1 }}>
+                  <b>Money out</b>
+                  <span className="pill warn">Paid from cash (then savings if needed)</span>
+                </label>
+              )}
               <button className="btn small danger" onClick={() => update((d) => { d.events.splice(ei, 1); })}>×</button>
             </div>
           </div>

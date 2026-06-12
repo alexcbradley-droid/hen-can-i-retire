@@ -6,6 +6,10 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Scenario } from './engine/types';
 import { emptyScenario, sampleScenario, uid } from './engine/defaults';
+import {
+  cloudEnabled, onAuthChange, signInWithGoogle, signOut,
+  fetchCloudScenarios, upsertCloudScenario, deleteCloudScenario,
+} from './cloud';
 
 const STORAGE_KEY = 'wcir-scenarios-v1';
 
@@ -22,6 +26,11 @@ interface StoreShape {
   importJson: (text: string) => string | null; // returns error message or null
   exportJson: () => string;
   loaded: boolean;
+  // Optional cloud account (Google sign-in via Supabase)
+  cloudOn: boolean;
+  userEmail: string | null;
+  signIn: () => void;
+  signOutUser: () => void;
 }
 
 const Ctx = createContext<StoreShape | null>(null);
@@ -36,7 +45,39 @@ export function StoreProvider({ children, startWithDemo }: { children: React.Rea
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [activeId, setActiveId] = useState('');
   const [loaded, setLoaded] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => onAuthChange((u) => {
+    setUserEmail(u?.email ?? null);
+    setUserId(u?.id ?? null);
+  }), []);
+
+  // On sign-in: merge cloud scenarios with local ones (newer edit wins per
+  // scenario) and upload anything the account doesn't have yet.
+  useEffect(() => {
+    if (!userId || !loaded) return;
+    let cancelled = false;
+    fetchCloudScenarios().then((cloud) => {
+      if (cancelled) return;
+      setScenarios((local) => {
+        const byId = new Map(local.map((s) => [s.id, s]));
+        for (const cs of cloud) {
+          const ls = byId.get(cs.id);
+          if (!ls || cs.updatedAt > ls.updatedAt) byId.set(cs.id, cs);
+        }
+        const merged = Array.from(byId.values());
+        const cloudById = new Map(cloud.map((s) => [s.id, s]));
+        for (const s of merged) {
+          const cs = cloudById.get(s.id);
+          if (!cs || cs.updatedAt < s.updatedAt) void upsertCloudScenario(s);
+        }
+        return merged;
+      });
+    });
+    return () => { cancelled = true; };
+  }, [userId, loaded]);
 
   useEffect(() => {
     let list: Scenario[] = [];
@@ -71,8 +112,12 @@ export function StoreProvider({ children, startWithDemo }: { children: React.Rea
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ scenarios, activeId })); } catch { /* quota */ }
+      if (userId) {
+        const current = scenarios.find((s) => s.id === activeId);
+        if (current) void upsertCloudScenario(current);
+      }
     }, 400);
-  }, [scenarios, activeId, loaded]);
+  }, [scenarios, activeId, loaded, userId]);
 
   const active = useMemo(
     () => scenarios.find((s) => s.id === activeId) ?? scenarios[0] ?? emptyScenario(),
@@ -111,6 +156,7 @@ export function StoreProvider({ children, startWithDemo }: { children: React.Rea
       setActiveId(copy.id);
     },
     remove: () => {
+      if (userId) void deleteCloudScenario(active.id);
       setScenarios((prev) => {
         const rest = prev.filter((s) => s.id !== active.id);
         const next = rest.length ? rest : [emptyScenario()];
@@ -152,6 +198,10 @@ export function StoreProvider({ children, startWithDemo }: { children: React.Rea
       }
     },
     exportJson: () => JSON.stringify(active, null, 2),
+    cloudOn: cloudEnabled(),
+    userEmail,
+    signIn: () => { void signInWithGoogle(); },
+    signOutUser: () => { void signOut(); },
   };
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;

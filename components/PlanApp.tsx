@@ -39,7 +39,11 @@ function PlanInner() {
           {showUpload ? 'Hide spreadsheet upload' : 'Upload a spreadsheet instead'}
         </button>
       </div>
-      {showUpload && <div className="card" style={{ marginTop: 10 }}><UploadPanel onDone={() => setTab('Your details')} /></div>}
+      {showUpload && (
+        <div className="card" style={{ marginTop: 10 }}>
+          <UploadPanel onDone={() => { setShowUpload(false); setTab('Overview'); }} />
+        </div>
+      )}
 
       <div className="tabs no-print" role="tablist">
         {TABS.map((t) => (

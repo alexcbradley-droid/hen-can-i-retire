@@ -42,6 +42,28 @@ variable in Vercel → Settings → Environment Variables:
 Live market data (fund averages via Stooq, crypto prices by CoinGecko) needs
 no key and degrades gracefully to documented long-run defaults if unreachable.
 
+## Optional: Google sign-in and cloud saving
+
+Without any setup, plans are saved in the visitor's browser. To let people
+sign in with Google and keep their plans across devices:
+
+1. Create a free project at supabase.com (any name, region London/eu-west-2).
+2. In the Supabase dashboard, open **SQL Editor**, paste the contents of
+   `supabase-setup.sql` from this repository, and run it.
+3. Enable Google sign-in: Supabase → **Authentication → Sign In / Up →
+   Google**. It asks for a Google OAuth Client ID and Secret — create those at
+   console.cloud.google.com → **APIs & Services → Credentials → Create
+   credentials → OAuth client ID** (type: Web application), adding the
+   redirect URL that the Supabase Google settings page shows you.
+4. In Vercel → Settings → Environment Variables, add (from Supabase →
+   Settings → API):
+   - `NEXT_PUBLIC_SUPABASE_URL` — the project URL
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` — the anon/publishable key
+5. Redeploy. A "Sign in with Google to save" button appears in the planner.
+
+If the two variables are absent the sign-in button is hidden and the site
+behaves exactly as before.
+
 ## Important
 
 This tool provides guidance and education only — it is not financial advice

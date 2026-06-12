@@ -39,8 +39,7 @@ export default function UploadPanel({ onDone }: { onDone?: () => void }) {
       const intake: Intake = data.intake;
       const scenario = intakeToScenario(intake, file.name.replace(/\.\w+$/, ''));
       store.importJson(JSON.stringify(scenario));
-      setResult(intake);
-      onDone?.();
+      setResult(intake); // the user reads the notes, then opens the planner via the button
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong with that file.');
     } finally {
@@ -80,7 +79,7 @@ export default function UploadPanel({ onDone }: { onDone?: () => void }) {
       {error && <p className="notice" style={{ borderColor: 'var(--red)' }}>{error}</p>}
       {result && (
         <div className="notice info">
-          <b>Imported as a new scenario.</b>
+          <b>Imported as a new scenario — it&apos;s saved in this browser and now drives the planner.</b>
           {result.notes?.length > 0 && (
             <>
               <p style={{ margin: '8px 0 4px' }}><b>What I found and assumed:</b></p>
@@ -93,6 +92,12 @@ export default function UploadPanel({ onDone }: { onDone?: () => void }) {
               <ul style={{ margin: 0 }}>{result.questions.map((q, i) => <li key={i}>{q}</li>)}</ul>
             </>
           )}
+          <div className="btn-row" style={{ marginTop: 10 }}>
+            <button className="btn primary" onClick={() => onDone?.()}>Open in the planner</button>
+            {store.cloudOn && !store.userEmail && (
+              <button className="btn" onClick={store.signIn}>Sign in with Google to save it to your account</button>
+            )}
+          </div>
         </div>
       )}
     </div>

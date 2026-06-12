@@ -54,6 +54,20 @@ export default function ScenarioBar() {
         }}
       />
       {error && <span className="pill bad">{error}</span>}
+      {store.cloudOn && (
+        <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+          {store.userEmail ? (
+            <>
+              <span className="pill good">Saved to your account · {store.userEmail}</span>
+              <button className="btn small" onClick={store.signOutUser}>Sign out</button>
+            </>
+          ) : (
+            <button className="btn small" onClick={store.signIn} title="Keep your plans across devices">
+              Sign in with Google to save
+            </button>
+          )}
+        </span>
+      )}
     </div>
   );
 }
