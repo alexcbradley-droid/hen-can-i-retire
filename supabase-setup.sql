@@ -91,7 +91,10 @@ returns json
 language plpgsql security definer set search_path = public as $$
 declare result json;
 begin
-  if coalesce(auth.jwt() ->> 'email', '') <> 'alexcbradley@gmail.com' then
+  -- Pinned to the owner's immutable user UUID as well as the email claim,
+  -- so a forged/unverified email claim alone is never sufficient.
+  if auth.uid() is distinct from '92e7e394-872c-42f5-ac69-d1d38ef953a4'::uuid
+     or coalesce(auth.jwt() ->> 'email', '') <> 'alexcbradley@gmail.com' then
     raise exception 'not authorised';
   end if;
   select json_build_object(
