@@ -39,9 +39,12 @@ export default function DetailsTab() {
           <span className="hint">State Pension ages are worked out from dates of birth.</span></div>
         {s.people.map((p, pi) => (
           <div className="grid4" key={p.id}>
-            <TextField label="Name" value={p.name} onChange={(v) => update((d) => { d.people[pi].name = v; })} />
-            <DateField label="Date of birth" value={p.dateOfBirth} onChange={(v) => update((d) => { d.people[pi].dateOfBirth = v || '1980-01-01'; })} />
-            <NumField label="Plan to age" value={p.planToAge} min={60} onChange={(v) => update((d) => { d.people[pi].planToAge = v; })} />
+            <TextField label="Name" value={p.name} hint="First name or nickname — just to label this person in the plan."
+              onChange={(v) => update((d) => { d.people[pi].name = v; })} />
+            <DateField label="Date of birth" value={p.dateOfBirth} required hint="Sets your State Pension age and when pensions can start."
+              onChange={(v) => update((d) => { d.people[pi].dateOfBirth = v || '1980-01-01'; })} />
+            <NumField label="Plan to age" value={p.planToAge} min={60} hint="How long the money must last — 95+ is a prudent UK planning default."
+              onChange={(v) => update((d) => { d.people[pi].planToAge = v; })} />
             <div className="field"><b style={{ display: 'block', fontSize: '.82rem', marginBottom: 4 }}>State Pension age</b>
               <span className="pill">{(() => { const a = statePensionAge(p.dateOfBirth); return a.months ? `${a.years}y ${a.months}m` : a.years; })()}</span>
               {pi > 0 && (
@@ -74,26 +77,33 @@ export default function DetailsTab() {
         {s.employments.map((e, ei) => (
           <div key={e.personId + ei}>
             <div className="grid4">
-              <SelectField label="Person" value={e.personId} options={personOptions}
+              <SelectField label="Person" value={e.personId} options={personOptions} hint="Who earns this salary."
                 onChange={(v) => update((d) => { d.employments[ei].personId = v; })} />
-              <NumField label="Salary" suffix="£/year" value={e.grossSalary} step={1000}
+              <NumField label="Salary" suffix="£/year" value={e.grossSalary} step={1000} required
+                hint="Gross pay before tax — from your payslip or contract."
                 onChange={(v) => update((d) => { d.employments[ei].grossSalary = v; })} />
               <NumField label="Bonus / extras" suffix="£/year" value={e.bonus} step={500}
+                hint="Typical yearly bonus, commission or overtime before tax. 0 if none."
                 onChange={(v) => update((d) => { d.employments[ei].bonus = v; })} />
               <NumField label="Salary growth" suffix="%/year" value={e.salaryGrowthPct} step={0.5}
+                hint="Expected yearly pay rises including inflation — UK average is around 3%."
                 onChange={(v) => update((d) => { d.employments[ei].salaryGrowthPct = v; })} />
             </div>
             <div className="grid4">
-              <MonthField label="Retirement date" value={e.retirementDate}
+              <MonthField label="Retirement date" value={e.retirementDate} required
+                hint="The month you plan to stop full-time work in this job."
                 onChange={(v) => update((d) => { d.employments[ei].retirementDate = v || e.retirementDate; })} />
               <CheckField label="Phase into retirement with part-time work" value={!!e.partTime}
+                hint="Tick if you'll work reduced hours for a while after your main retirement date."
                 onChange={(v) => update((d) => {
                   d.employments[ei].partTime = v ? { endDate: addYears(e.retirementDate, 3), grossSalary: Math.round(e.grossSalary / 3) } : undefined;
                 })} />
               {e.partTime && (<>
                 <MonthField label="Part-time until" value={e.partTime.endDate}
+                  hint="When the part-time work ends and you stop earning entirely."
                   onChange={(v) => update((d) => { d.employments[ei].partTime!.endDate = v || e.partTime!.endDate; })} />
                 <NumField label="Part-time salary" suffix="£/year" value={e.partTime.grossSalary} step={1000}
+                  hint="Gross pay before tax while working part-time."
                   onChange={(v) => update((d) => { d.employments[ei].partTime!.grossSalary = v; })} />
               </>)}
             </div>
@@ -113,28 +123,37 @@ export default function DetailsTab() {
         {s.dcPensions.map((dc, di) => (
           <div key={dc.id}>
             <div className="grid4">
-              <TextField label="Name" value={dc.name} onChange={(v) => update((d) => { d.dcPensions[di].name = v; })} />
-              <SelectField label="Whose" value={dc.personId} options={personOptions}
+              <TextField label="Name" value={dc.name} hint="A label you'll recognise, e.g. provider or employer name."
+                onChange={(v) => update((d) => { d.dcPensions[di].name = v; })} />
+              <SelectField label="Whose" value={dc.personId} options={personOptions} hint="Who this pension pot belongs to."
                 onChange={(v) => update((d) => { d.dcPensions[di].personId = v; })} />
               <NumField label="Current value" suffix="£" value={dc.currentValue} step={1000}
+                hint="Today's pot value from your provider's app or annual statement."
                 onChange={(v) => update((d) => { d.dcPensions[di].currentValue = v; })} />
               <NumField label="Growth" suffix="%/year" value={dc.growthPct} step={0.5}
+                hint="Yearly growth before inflation. Long-run global equities ≈ 5–7%."
                 onChange={(v) => update((d) => { d.dcPensions[di].growthPct = v; })} />
             </div>
             <div className="grid4">
               <NumField label="Your contribution" suffix="% of salary" value={dc.employeePct} step={0.5}
+                hint="What you pay in, from your payslip — auto-enrolment minimum is 5%."
                 onChange={(v) => update((d) => { d.dcPensions[di].employeePct = v; })} />
               <NumField label="Employer contribution" suffix="% of salary" value={dc.employerPct} step={0.5}
+                hint="What your employer adds — auto-enrolment minimum is 3%."
                 onChange={(v) => update((d) => { d.dcPensions[di].employerPct = v; })} />
               <NumField label="Extra monthly" suffix="£/month" value={dc.extraMonthly} step={50}
+                hint="Any regular top-up you pay in beyond the salary percentages."
                 onChange={(v) => update((d) => { d.dcPensions[di].extraMonthly = v; })} />
               <NumField label="Fees" suffix="%/year" value={dc.feesPct} step={0.1}
+                hint="Total annual charge from your provider — UK workplace schemes ≈ 0.3–0.75%."
                 onChange={(v) => update((d) => { d.dcPensions[di].feesPct = v; })} />
             </div>
             <div className="btn-row">
               <CheckField label="Paid by salary sacrifice" value={dc.salarySacrifice}
+                hint="Tick if contributions come off your pay before tax and NI — ask payroll if unsure."
                 onChange={(v) => update((d) => { d.dcPensions[di].salarySacrifice = v; })} />
               <CheckField label="Take 25% tax-free cash at retirement" value={dc.takePclsAtRetirement}
+                hint="Most UK pots let you take up to 25% tax-free when you start drawing."
                 onChange={(v) => update((d) => { d.dcPensions[di].takePclsAtRetirement = v; })} />
               <button className="btn small danger" onClick={() => update((d) => { d.dcPensions.splice(di, 1); })}>Remove</button>
             </div>
@@ -153,20 +172,29 @@ export default function DetailsTab() {
         {s.dbPensions.map((db, di) => (
           <div key={db.id}>
             <div className="grid4">
-              <TextField label="Scheme name" value={db.name} onChange={(v) => update((d) => { d.dbPensions[di].name = v; })} />
-              <SelectField label="Whose" value={db.personId} options={personOptions}
+              <TextField label="Scheme name" value={db.name} hint="The scheme's name from your statement, e.g. NHS, Teachers', USS."
+                onChange={(v) => update((d) => { d.dbPensions[di].name = v; })} />
+              <SelectField label="Whose" value={db.personId} options={personOptions} hint="Who this pension belongs to."
                 onChange={(v) => update((d) => { d.dbPensions[di].personId = v; })} />
               <NumField label="Annual pension at normal age" suffix="£/year today" value={db.annualPension} step={500}
+                hint="The yearly pension promised at normal age — from your annual benefit statement."
                 onChange={(v) => update((d) => { d.dbPensions[di].annualPension = v; })} />
               <NumField label="One-off lump sum" suffix="£" value={db.lumpSum} step={1000}
+                hint="Tax-free lump sum the scheme pays at the start, if any — 0 if none."
                 onChange={(v) => update((d) => { d.dbPensions[di].lumpSum = v; })} />
             </div>
             <div className="grid4">
-              <NumField label="Normal pension age" value={db.normalPensionAge} onChange={(v) => update((d) => { d.dbPensions[di].normalPensionAge = v; })} />
-              <NumField label="Start at age" value={db.startAge} onChange={(v) => update((d) => { d.dbPensions[di].startAge = v; })} />
+              <NumField label="Normal pension age" value={db.normalPensionAge}
+                hint="Age the scheme pays in full without reduction — often 60, 65 or State Pension age."
+                onChange={(v) => update((d) => { d.dbPensions[di].normalPensionAge = v; })} />
+              <NumField label="Start at age" value={db.startAge}
+                hint="When you'll actually start taking it — earlier than normal age means a reduction."
+                onChange={(v) => update((d) => { d.dbPensions[di].startAge = v; })} />
               <NumField label="Early reduction" suffix="%/year early" value={db.earlyReductionPct} step={0.5}
+                hint="Cut applied per year taken early — UK schemes typically use ~4–5%."
                 onChange={(v) => update((d) => { d.dbPensions[di].earlyReductionPct = v; })} />
               <NumField label="Increases in payment" suffix="%/year" value={db.indexationPct} step={0.5}
+                hint="How payments rise each year — many schemes track CPI, often capped at 2.5–5%."
                 onChange={(v) => update((d) => { d.dbPensions[di].indexationPct = v; })} />
             </div>
             <button className="btn small danger" onClick={() => update((d) => { d.dbPensions.splice(di, 1); })}>Remove</button>
@@ -189,10 +217,13 @@ export default function DetailsTab() {
             <div className="grid4" key={sp.personId}>
               <div className="field"><b style={{ display: 'block', fontSize: '.82rem', marginBottom: 4 }}>Person</b><span>{person.name}</span></div>
               <NumField label="Qualifying NI years so far" value={sp.qualifyingYears} min={0}
+                hint="Check at gov.uk/check-state-pension — 35 years gets the full amount."
                 onChange={(v) => update((d) => { d.statePensions[si].qualifyingYears = v; })} />
               <NumField label="Defer by" suffix="years" value={sp.deferralYears} step={0.5} min={0}
+                hint="Years to delay claiming past State Pension age — it rises ~5.8% per year deferred."
                 onChange={(v) => update((d) => { d.statePensions[si].deferralYears = v; })} />
               <CheckField label="Still accruing years while working" value={sp.yearsStillWorking ?? true}
+                hint="Tick if you'll keep adding NI years until retirement (one per working year)."
                 onChange={(v) => update((d) => { d.statePensions[si].yearsStillWorking = v; })} />
             </div>
           );
@@ -206,20 +237,25 @@ export default function DetailsTab() {
         {s.accounts.map((a, ai) => (
           <div key={a.id}>
             <div className="grid4">
-              <TextField label="Name" value={a.name} onChange={(v) => update((d) => { d.accounts[ai].name = v; })} />
+              <TextField label="Name" value={a.name} hint="A label you'll recognise, e.g. 'Vanguard ISA' or 'NS&I savings'."
+                onChange={(v) => update((d) => { d.accounts[ai].name = v; })} />
               <SelectField label="Account type" value={a.type} options={[
                 { value: 'cash', label: 'Cash savings' },
                 { value: 'isa', label: 'ISA (tax-free)' },
                 { value: 'gia', label: 'General investment account (taxable)' },
                 { value: 'premium-bonds', label: 'Premium bonds' },
-              ]} onChange={(v) => update((d) => { d.accounts[ai].type = v as typeof a.type; })} />
+              ]} hint="The tax wrapper — ISAs are tax-free, general accounts pay tax on gains."
+                onChange={(v) => update((d) => { d.accounts[ai].type = v as typeof a.type; })} />
               <NumField label="Current value" suffix="£" value={a.value} step={500}
+                hint="Today's balance from your bank or investment platform."
                 onChange={(v) => update((d) => { d.accounts[ai].value = v; })} />
               <NumField label="Monthly saving while working" suffix="£/month" value={a.monthlyContribution} step={50}
+                hint="What you add each month until retirement — 0 if nothing regular."
                 onChange={(v) => update((d) => { d.accounts[ai].monthlyContribution = v; })} />
             </div>
             <div className="grid4">
               <SelectField label="Invested in" value={a.assetId} options={assetOptions}
+                hint="Pick the closest match to set a growth rate, or Custom to enter your own."
                 onChange={(v) => update((d) => {
                   d.accounts[ai].assetId = v;
                   const live = market?.assets?.[v]?.annualised5yPct;
@@ -227,11 +263,14 @@ export default function DetailsTab() {
                   d.accounts[ai].growthPct = useLive ? Math.round(live * 10) / 10 : assetById(v).defaultGrowthPct;
                 })} />
               <NumField label="Expected growth" suffix="%/year" value={a.growthPct} step={0.5}
+                hint="Yearly growth before inflation. Long-run global equities ≈ 5–7%."
                 onChange={(v) => update((d) => { d.accounts[ai].growthPct = v; })} />
               <NumField label="Fees" suffix="%/year" value={a.feesPct} step={0.1}
+                hint="Platform plus fund charges combined — index trackers are often under 0.5%."
                 onChange={(v) => update((d) => { d.accounts[ai].feesPct = v; })} />
               {a.type === 'gia' ? (
                 <NumField label="Amount originally paid in" suffix="£ (for capital gains tax)" value={a.costBasis ?? a.value} step={500}
+                  hint="Total you contributed over the years — used to estimate capital gains tax."
                   onChange={(v) => update((d) => { d.accounts[ai].costBasis = v; })} />
               ) : <div />}
             </div>
@@ -252,12 +291,16 @@ export default function DetailsTab() {
         {s.properties.map((pr, pi) => (
           <div key={pr.id}>
             <div className="grid4">
-              <TextField label="Name" value={pr.name} onChange={(v) => update((d) => { d.properties[pi].name = v; })} />
+              <TextField label="Name" value={pr.name} hint="A label you'll recognise, e.g. 'Home' or 'Flat in Leeds'."
+                onChange={(v) => update((d) => { d.properties[pi].name = v; })} />
               <NumField label="Value" suffix="£" value={pr.value} step={5000}
+                hint="Today's market value — a Zoopla or Rightmove estimate is fine."
                 onChange={(v) => update((d) => { d.properties[pi].value = v; })} />
               <NumField label="Price growth" suffix="%/year" value={pr.growthPct} step={0.25}
+                hint="Expected yearly house price growth — UK long-run average is around 3%."
                 onChange={(v) => update((d) => { d.properties[pi].growthPct = v; })} />
               <CheckField label="This is our main home" value={pr.isMainHome}
+                hint="Your main home is exempt from capital gains tax if you sell it."
                 onChange={(v) => update((d) => { d.properties[pi].isMainHome = v; })} />
             </div>
             <CheckField label="Has a mortgage" value={!!pr.mortgage} onChange={(v) => update((d) => {
@@ -266,12 +309,16 @@ export default function DetailsTab() {
             {pr.mortgage && (
               <div className="grid4">
                 <NumField label="Mortgage balance" suffix="£" value={pr.mortgage.balance} step={1000}
+                  hint="Amount still owed, from your latest mortgage statement."
                   onChange={(v) => update((d) => { d.properties[pi].mortgage!.balance = v; })} />
                 <NumField label="Interest rate" suffix="%" value={pr.mortgage.ratePct} step={0.1}
+                  hint="Your current mortgage rate — on your statement or lender's app."
                   onChange={(v) => update((d) => { d.properties[pi].mortgage!.ratePct = v; })} />
                 <NumField label="Monthly payment" suffix="£" value={pr.mortgage.monthlyPayment} step={50}
+                  hint="Your current monthly repayment from your mortgage statement."
                   onChange={(v) => update((d) => { d.properties[pi].mortgage!.monthlyPayment = v; })} />
                 <CheckField label="Interest-only" value={pr.mortgage.interestOnly}
+                  hint="Tick if payments cover interest only, so the balance never falls."
                   onChange={(v) => update((d) => { d.properties[pi].mortgage!.interestOnly = v; })} />
               </div>
             )}
@@ -281,10 +328,13 @@ export default function DetailsTab() {
             {pr.rental && (
               <div className="grid3">
                 <NumField label="Rent" suffix="£/month" value={pr.rental.grossMonthlyRent} step={50}
+                  hint="Monthly rent received before any costs or tax."
                   onChange={(v) => update((d) => { d.properties[pi].rental!.grossMonthlyRent = v; })} />
                 <NumField label="Rent growth" suffix="%/year" value={pr.rental.rentGrowthPct} step={0.25}
+                  hint="Expected yearly rent increases — often near inflation, around 2–3%."
                   onChange={(v) => update((d) => { d.properties[pi].rental!.rentGrowthPct = v; })} />
                 <NumField label="Running costs" suffix="£/month" value={pr.rental.monthlyCosts} step={25}
+                  hint="Agent fees, insurance, repairs and voids — excluding the mortgage."
                   onChange={(v) => update((d) => { d.properties[pi].rental!.monthlyCosts = v; })} />
               </div>
             )}
@@ -294,12 +344,15 @@ export default function DetailsTab() {
             {pr.sale && (
               <div className="grid3">
                 <MonthField label="Sale date" value={pr.sale.date}
+                  hint="Roughly when you expect to sell — a best guess is fine."
                   onChange={(v) => update((d) => { d.properties[pi].sale!.date = v || pr.sale!.date; })} />
                 <SelectField label="Proceeds go to" value={pr.sale.proceedsTo} options={[
                   { value: 'invest', label: 'Invest (ISA first, then taxable account)' },
                   { value: 'cash', label: 'Hold as cash' },
-                ]} onChange={(v) => update((d) => { d.properties[pi].sale!.proceedsTo = v as 'invest' | 'cash'; })} />
+                ]} hint="What happens to the money left after repaying any mortgage."
+                  onChange={(v) => update((d) => { d.properties[pi].sale!.proceedsTo = v as 'invest' | 'cash'; })} />
                 <NumField label="Buy next home for (0 = none)" suffix="£ today" value={pr.sale.buyNext?.price ?? 0} step={10000}
+                  hint="Price of a replacement home in today's money, if downsizing — 0 if not buying."
                   onChange={(v) => update((d) => { d.properties[pi].sale!.buyNext = v > 0 ? { price: v } : undefined; })} />
               </div>
             )}
@@ -318,15 +371,19 @@ export default function DetailsTab() {
           <span className="hint">Inheritance, windfalls, gifts to children (negative amount = money out). Enter amounts after any tax due on receipt.</span></div>
         {s.events.map((ev, ei) => (
           <div className="grid4" key={ev.id}>
-            <TextField label="What" value={ev.name} onChange={(v) => update((d) => { d.events[ei].name = v; })} />
-            <MonthField label="When" value={ev.date} onChange={(v) => update((d) => { d.events[ei].date = v || ev.date; })} />
+            <TextField label="What" value={ev.name} hint="A short description, e.g. 'Inheritance' or 'Gift to children'."
+              onChange={(v) => update((d) => { d.events[ei].name = v; })} />
+            <MonthField label="When" value={ev.date} hint="Roughly when you expect this to happen — a best guess is fine."
+              onChange={(v) => update((d) => { d.events[ei].date = v || ev.date; })} />
             <NumField label="Amount (negative = out)" suffix="£" value={ev.amount} step={1000}
+              hint="Money received (positive) or paid out (negative), after any tax on receipt."
               onChange={(v) => update((d) => { d.events[ei].amount = v; })} />
             <div className="field" style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
               {ev.amount >= 0 ? (
                 <SelectField label="Money in goes to" value={ev.to} options={[
                   { value: 'invest', label: 'Invest' }, { value: 'cash', label: 'Cash' },
-                ]} onChange={(v) => update((d) => { d.events[ei].to = v as 'invest' | 'cash'; })} />
+                ]} hint="Where the money lands — invested (ISA first) or kept as cash."
+                  onChange={(v) => update((d) => { d.events[ei].to = v as 'invest' | 'cash'; })} />
               ) : (
                 <label className="field" style={{ flex: 1 }}>
                   <b>Money out</b>
@@ -347,13 +404,15 @@ export default function DetailsTab() {
         <div className="panel-title"><h3>Spending</h3>
           <span className="hint">All figures in today&apos;s money (the planner adds inflation). Mortgage payments are added automatically on top.</span></div>
         <div className="grid3">
-          <NumField label="Spending now, while working" suffix="£/month" value={s.spending.preRetirementMonthly} step={100}
+          <NumField label="Spending now, while working" suffix="£/month" value={s.spending.preRetirementMonthly} step={100} required
+            hint="Typical monthly outgoings excluding mortgage and pension contributions."
             onChange={(v) => update((d) => { d.spending.preRetirementMonthly = v; })} />
           <SelectField label="Retirement spending model" value={s.spending.retirement.kind} options={[
             { value: 'flat', label: 'Same every year' },
             { value: 'phases', label: 'Phases: more early on, less later' },
             { value: 'plsa', label: 'Use a Retirement Living Standard' },
-          ]} onChange={(v) => update((d) => {
+          ]} hint="How your spending changes through retirement — flat is the simplest start."
+            onChange={(v) => update((d) => {
             if (v === 'flat') d.spending.retirement = { kind: 'flat', monthlyToday: 2500 };
             else if (v === 'phases') d.spending.retirement = { kind: 'phases', goGo: 3000, slowGo: 2400, noGo: 2000, slowGoAge: 75, noGoAge: 85 };
             else d.spending.retirement = { kind: 'plsa', standard: 'moderate' };
@@ -361,7 +420,8 @@ export default function DetailsTab() {
           <div />
         </div>
         {s.spending.retirement.kind === 'flat' && (
-          <NumField label="Retirement spending" suffix="£/month today" value={s.spending.retirement.monthlyToday} step={100}
+          <NumField label="Retirement spending" suffix="£/month today" value={s.spending.retirement.monthlyToday} step={100} required
+            hint="What you'd like to spend per month in retirement, in today's money."
             onChange={(v) => update((d) => { (d.spending.retirement as { monthlyToday: number }).monthlyToday = v; })} />
         )}
         {s.spending.retirement.kind === 'phases' && (
@@ -369,12 +429,15 @@ export default function DetailsTab() {
             {(['goGo', 'slowGo', 'noGo'] as const).map((k) => (
               <NumField key={k} label={k === 'goGo' ? 'Active years' : k === 'slowGo' ? 'Slower years' : 'Later years'} suffix="£/month"
                 value={(s.spending.retirement as Record<typeof k, number>)[k]} step={100}
+                hint="Monthly spend for this phase of retirement, in today's money."
                 onChange={(v) => update((d) => { (d.spending.retirement as Record<typeof k, number>)[k] = v; })} />
             ))}
             <div className="grid2">
               <NumField label="Slower from age" value={(s.spending.retirement as { slowGoAge: number }).slowGoAge}
+                hint="Age spending steps down from active to slower — often around 75."
                 onChange={(v) => update((d) => { (d.spending.retirement as { slowGoAge: number }).slowGoAge = v; })} />
               <NumField label="Later from age" value={(s.spending.retirement as { noGoAge: number }).noGoAge}
+                hint="Age spending steps down again for later life — often around 85."
                 onChange={(v) => update((d) => { (d.spending.retirement as { noGoAge: number }).noGoAge = v; })} />
             </div>
           </div>
@@ -384,24 +447,31 @@ export default function DetailsTab() {
             { value: 'minimum', label: `Minimum — covers needs (${gbp(plsa.minimum)}/year)` },
             { value: 'moderate', label: `Moderate — more security and flexibility (${gbp(plsa.moderate)}/year)` },
             { value: 'comfortable', label: `Comfortable — more financial freedom (${gbp(plsa.comfortable)}/year)` },
-          ]} onChange={(v) => update((d) => { (d.spending.retirement as { standard: string }).standard = v; })} />
+          ]} hint="Independent UK benchmarks of typical retirement costs, published by the PLSA."
+            onChange={(v) => update((d) => { (d.spending.retirement as { standard: string }).standard = v; })} />
         )}
         <CheckField label="Allow for care costs late in life" value={!!s.spending.careCosts}
+          hint="Adds extra spending from a chosen age to stress-test for care needs."
           onChange={(v) => update((d) => { d.spending.careCosts = v ? { fromAge: 88, monthlyToday: 2000 } : undefined; })} />
         {s.spending.careCosts && (
           <div className="grid2">
             <NumField label="From age" value={s.spending.careCosts.fromAge}
+              hint="Age extra care spending starts — care needs commonly arise in the late 80s."
               onChange={(v) => update((d) => { d.spending.careCosts!.fromAge = v; })} />
             <NumField label="Extra cost" suffix="£/month today" value={s.spending.careCosts.monthlyToday} step={100}
+              hint="Extra monthly care cost in today's money — home care varies widely by need."
               onChange={(v) => update((d) => { d.spending.careCosts!.monthlyToday = v; })} />
           </div>
         )}
         <div className="panel-title" style={{ marginTop: 10 }}><h4 style={{ margin: 0, fontSize: '.95rem' }}>One-off spends</h4></div>
         {s.spending.oneOffs.map((so, si) => (
           <div className="grid4" key={so.id}>
-            <TextField label="What" value={so.name} onChange={(v) => update((d) => { d.spending.oneOffs[si].name = v; })} />
-            <MonthField label="When" value={so.date} onChange={(v) => update((d) => { d.spending.oneOffs[si].date = v || so.date; })} />
+            <TextField label="What" value={so.name} hint="A short description, e.g. 'New car' or 'Daughter's wedding'."
+              onChange={(v) => update((d) => { d.spending.oneOffs[si].name = v; })} />
+            <MonthField label="When" value={so.date} hint="Roughly when you'll spend it — a best guess is fine."
+              onChange={(v) => update((d) => { d.spending.oneOffs[si].date = v || so.date; })} />
             <NumField label="Cost" suffix="£" value={so.amount} step={500}
+              hint="Total cost in today's money — the planner adds inflation."
               onChange={(v) => update((d) => { d.spending.oneOffs[si].amount = v; })} />
             <div style={{ display: 'flex', alignItems: 'center' }}>
               <button className="btn small danger" onClick={() => update((d) => { d.spending.oneOffs.splice(si, 1); })}>×</button>
@@ -419,23 +489,30 @@ export default function DetailsTab() {
           <span className="hint">Defaults follow common UK planning conventions — see Methodology.</span></div>
         <div className="grid4">
           <NumField label="Inflation" suffix="%/year" value={s.assumptions.inflationPct} step={0.25}
+            hint="Long-run UK price rises — the Bank of England targets 2%; 2–2.5% is typical."
             onChange={(v) => update((d) => { d.assumptions.inflationPct = v; })} />
           <NumField label="Cash buffer in retirement" suffix="months of spending" value={s.assumptions.cashBufferMonths} step={1} min={0}
+            hint="Spending kept in cash so you needn't sell investments in a downturn."
             onChange={(v) => update((d) => { d.assumptions.cashBufferMonths = v; })} />
           <SelectField label="Withdrawal order in retirement" value={s.assumptions.withdrawalOrder} options={[
             { value: 'cash-gia-isa-pension', label: 'Cash → taxable → ISA → pension (common default)' },
             { value: 'cash-gia-pension-isa', label: 'Cash → taxable → pension → ISA (preserve ISA)' },
             { value: 'pension-first', label: 'Pension first' },
-          ]} onChange={(v) => update((d) => { d.assumptions.withdrawalOrder = v as typeof s.assumptions.withdrawalOrder; })} />
+          ]} hint="Which pots are drawn from first — affects tax and how long money lasts."
+            onChange={(v) => update((d) => { d.assumptions.withdrawalOrder = v as typeof s.assumptions.withdrawalOrder; })} />
           <CheckField label="Show charts in today's money" value={s.assumptions.displayReal}
+            hint="Strips out inflation so future amounts are comparable with prices today."
             onChange={(v) => update((d) => { d.assumptions.displayReal = v; })} />
         </div>
         <div className="grid3">
-          <MonthField label="Target retirement date (goal)" value={s.goals.targetRetirementDate ?? ''}
+          <MonthField label="Target retirement date (goal)" value={s.goals.targetRetirementDate ?? ''} required
+            hint="The month you'd ideally retire — the planner checks if it's affordable."
             onChange={(v) => update((d) => { d.goals.targetRetirementDate = v || undefined; })} />
-          <NumField label="Target retirement income" suffix="£/month today" value={s.goals.targetMonthlyIncome ?? 0} step={100}
+          <NumField label="Target retirement income" suffix="£/month today" value={s.goals.targetMonthlyIncome ?? 0} step={100} required
+            hint="The monthly income you're aiming for in retirement, in today's money."
             onChange={(v) => update((d) => { d.goals.targetMonthlyIncome = v || undefined; })} />
           <NumField label="Legacy to leave" suffix="£" value={s.goals.legacyTarget ?? 0} step={10000}
+            hint="Amount you'd like left for family or charity at the end — 0 if none."
             onChange={(v) => update((d) => { d.goals.legacyTarget = v || undefined; })} />
         </div>
         <p className="small muted" style={{ margin: 0 }}>

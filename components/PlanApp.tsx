@@ -1,7 +1,7 @@
 'use client';
 
-import { useDeferredValue, useMemo, useState } from 'react';
-import { StoreProvider, useStore } from '@/lib/store';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { useStore } from '@/lib/store';
 import { fullProjection } from '@/lib/engine/solvers';
 import ScenarioBar from './ScenarioBar';
 import OverviewTab from './OverviewTab';
@@ -10,15 +10,23 @@ import ProjectionTab from './ProjectionTab';
 import CompareTab from './CompareTab';
 import RiskTab from './RiskTab';
 import ReportTab from './ReportTab';
+import AuditTab from './AuditTab';
 import UploadPanel from './UploadPanel';
 
-const TABS = ['Overview', 'Your details', 'Projection', 'Compare', 'Risk & stress', 'Report'] as const;
+const TABS = ['Overview', 'Your details', 'Projection', 'Compare', 'Risk & stress', 'Audit', 'Report'] as const;
 type Tab = (typeof TABS)[number];
 
-function PlanInner() {
-  const { active, loaded } = useStore();
+export default function PlanApp({ startWithDemo }: { startWithDemo?: boolean }) {
+  const store = useStore();
+  const { active, loaded } = store;
   const [tab, setTab] = useState<Tab>('Overview');
   const [showUpload, setShowUpload] = useState(false);
+
+  // The demo link opens (or creates) the sample household.
+  useEffect(() => {
+    if (loaded && startWithDemo) store.openSample();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, startWithDemo]);
 
   // Defer the expensive projection (simulation + solvers) so typing in the
   // editor stays responsive; updatedAt is the cheap change token.
@@ -58,15 +66,8 @@ function PlanInner() {
       {tab === 'Projection' && <ProjectionTab projection={projection} />}
       {tab === 'Compare' && <CompareTab />}
       {tab === 'Risk & stress' && <RiskTab projection={projection} />}
+      {tab === 'Audit' && <AuditTab projection={projection} />}
       {tab === 'Report' && <ReportTab projection={projection} />}
     </main>
-  );
-}
-
-export default function PlanApp({ startWithDemo }: { startWithDemo?: boolean }) {
-  return (
-    <StoreProvider startWithDemo={startWithDemo}>
-      <PlanInner />
-    </StoreProvider>
   );
 }

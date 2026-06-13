@@ -32,13 +32,15 @@ export default function GoalPanel() {
       <div className="panel-title"><h3>Your goal</h3>
         <span className="hint">When do you want to retire, and on how much?</span></div>
       <div className="grid3" style={{ alignItems: 'end' }}>
-        <MonthField label="Target retirement date" value={s.goals.targetRetirementDate ?? ''}
+        <MonthField label="Target retirement date" required hint="When you'd like to stop working."
+          value={s.goals.targetRetirementDate ?? ''}
           onChange={(v) => { store.update((d) => { d.goals.targetRetirementDate = v || undefined; }); setPlan(null); }} />
-        <NumField label="Target income" suffix="£/month today" step={100} min={0}
+        <NumField label="Target income" suffix="£/month today" step={100} min={0} required
+          hint="What you'd like to live on in retirement, in today's money."
           value={s.goals.targetMonthlyIncome ?? 0}
           onChange={(v) => { store.update((d) => { d.goals.targetMonthlyIncome = v || undefined; }); setPlan(null); }} />
         <div style={{ paddingBottom: 2 }}>
-          <button className="btn primary" onClick={run} disabled={!ready || working}>
+          <button className="btn cta" onClick={run} disabled={!ready || working}>
             {working ? 'Working it out…' : 'Work out what’s needed'}
           </button>
         </div>

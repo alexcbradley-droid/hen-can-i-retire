@@ -37,7 +37,7 @@ export default function Home() {
           your earliest retirement date, sustainable income, and how your plan holds up under stress.
         </p>
         <div className="btn-row" style={{ justifyContent: 'center' }}>
-          <Link href="/plan" className="btn primary">Start planning</Link>
+          <Link href="/plan" className="btn cta">Start planning — free, no sign-up</Link>
           <Link href="/plan?demo=1" className="btn">Try the sample household</Link>
         </div>
         <p className="small muted" style={{ marginTop: 12 }}>

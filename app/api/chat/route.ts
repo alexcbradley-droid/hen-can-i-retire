@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { checkAndLogUsage } from '@/lib/server/usage';
 
 export const maxDuration = 30;
 
-const SYSTEM = `You are the help assistant for "When can I retire?", a free UK retirement
-planning calculator. Your job is to help people understand what information the planner
-needs, where to find it, and how the planner works.
+const SYSTEM = `You are the assistant for "When can I retire?", a free UK retirement
+planning calculator. You help people understand what the planner needs, where to find
+their numbers, how the planner works — and, when plan context is provided, you explain
+their own results and can propose changes to their plan.
 
 What the planner models: State Pension (age from date of birth, amount from National
 Insurance qualifying years), defined contribution pensions (pot value, contributions,
@@ -15,9 +17,28 @@ one-off events such as inheritance, spending models including the PLSA Retiremen
 Living Standards, UK income tax and capital gains tax for 2026/27 (England, Wales and
 Northern Ireland — not Scotland), Monte Carlo simulation and sensitivity analysis.
 
-Where users find their numbers: State Pension forecast at gov.uk/check-state-pension;
-pension pot values on annual statements or provider apps; defined benefit entitlements
-on scheme statements; NI record at gov.uk/check-national-insurance-record.
+How headline figures are derived (use these when asked "how did you get X"):
+- The engine simulates the household month by month from now to the plan age: income
+  (salary, pensions, rent) minus tax and spending; surpluses are invested, shortfalls
+  are drawn from pots in the chosen withdrawal order.
+- "Net worth at retirement" = cash + ISAs + general investments + remaining pension
+  pots + property values minus mortgage balances, all at the first retirement month.
+- "Sustainable income" = the highest flat monthly retirement spend (today's money)
+  found by binary search such that money still lasts to the plan age.
+- "Earliest you could retire" = the earliest retirement date (searching month by
+  month) at which the plan still succeeds with current spending.
+- "Guaranteed income" = State Pension plus defined benefit pensions once all are in
+  payment, in today's money.
+The Audit tab and the methodology page show every assumption and the exact breakdown.
+
+Proposing changes: when the user asks you to change something in their plan, fill the
+"changes" array. Each change has a "path" into the plan JSON you were given (e.g.
+"spending.retirement.monthlyToday", "employments.0.retirementDate",
+"goals.targetMonthlyIncome", "accounts.1.monthlyContribution"), a short human "label"
+(e.g. "Retirement spending (£/month)") and the new scalar "value". Only reference
+paths that exist in the provided plan JSON. Dates are "YYYY-MM" strings. Leave
+"changes" empty when no change is requested. The user must confirm before anything is
+applied, so propose exactly what they asked for — never invent extra changes.
 
 Strict boundaries: you provide guidance and education only, never financial advice.
 Never recommend specific products, funds or providers, never tell someone what they
@@ -28,15 +49,38 @@ as "best for them" — explain trade-offs and suggest a regulated financial advi
 a few sentences, lists where they help. If asked something unrelated to retirement
 planning or this site, say it is outside what you can help with.`;
 
+const RESPONSE_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    reply: { type: 'string', description: 'Your answer to the user, plain text.' },
+    changes: {
+      type: 'array',
+      description: 'Plan edits the user explicitly asked for; empty if none.',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          path: { type: 'string' },
+          label: { type: 'string' },
+          value: { anyOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }] },
+        },
+        required: ['path', 'label', 'value'],
+      },
+    },
+  },
+  required: ['reply', 'changes'],
+} as const;
+
 interface ChatMessage { role: 'user' | 'assistant'; content: string }
 
 export async function POST(req: NextRequest) {
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json(
-      { reply: 'The chat assistant is not switched on yet (the site owner needs to add an AI API key). Meanwhile, the Help page below lists everything the planner needs.' },
+      { reply: 'The chat assistant is not switched on yet (the site owner needs to add an AI API key). Meanwhile, the Help page lists everything the planner needs.' },
     );
   }
-  let body: { messages?: ChatMessage[] };
+  let body: { messages?: ChatMessage[]; context?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -50,20 +94,56 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No question received.' }, { status: 400 });
   }
 
+  const { allowed } = await checkAndLogUsage(req, 'chat', 0.02, 60);
+  if (!allowed) {
+    return NextResponse.json({
+      reply: 'You have reached today’s limit for the assistant. It resets within 24 hours — meanwhile the Help and Methodology pages cover most questions.',
+    });
+  }
+
+  // Plan context (scenario + computed metrics) from the client; capped hard so
+  // an oversized payload can never blow the bill.
+  let contextBlock = '';
+  if (body.context) {
+    try {
+      contextBlock = JSON.stringify(body.context).slice(0, 30000);
+    } catch { /* ignore malformed context */ }
+  }
+
   const client = new Anthropic();
   try {
     const response = await client.messages.create({
       model: 'claude-opus-4-8',
-      max_tokens: 1024,
-      output_config: { effort: 'low' },
-      system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],
+      max_tokens: 1600,
+      output_config: {
+        effort: 'low',
+        format: { type: 'json_schema', schema: RESPONSE_SCHEMA as unknown as Record<string, unknown> },
+      },
+      system: [
+        { type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } },
+        ...(contextBlock ? [{
+          type: 'text' as const,
+          text: `Current plan context (scenario JSON, computed metrics, warnings):\n${contextBlock}`,
+        }] : []),
+      ],
       messages: history,
     });
     if (response.stop_reason === 'refusal' || !response.content.length) {
       return NextResponse.json({ reply: 'I can’t help with that one — try asking about the retirement planner or the information it needs.' });
     }
     const text = response.content.find((b) => b.type === 'text');
-    return NextResponse.json({ reply: text && text.type === 'text' ? text.text : 'Sorry, something went wrong — please try again.' });
+    if (!text || text.type !== 'text') {
+      return NextResponse.json({ reply: 'Sorry, something went wrong — please try again.' });
+    }
+    try {
+      const parsed = JSON.parse(text.text) as { reply?: string; changes?: unknown[] };
+      return NextResponse.json({
+        reply: parsed.reply || 'Sorry, something went wrong — please try again.',
+        changes: Array.isArray(parsed.changes) ? parsed.changes.slice(0, 12) : [],
+      });
+    } catch {
+      return NextResponse.json({ reply: text.text });
+    }
   } catch (err) {
     console.error('chat error', err);
     return NextResponse.json({ reply: 'Sorry, the assistant is having trouble right now. Please try again in a minute.' });

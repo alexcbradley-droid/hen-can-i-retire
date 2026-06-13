@@ -20,8 +20,9 @@ export default function ReportTab({ projection }: { projection: ProjectionResult
 
   return (
     <div>
+      <div className="print-brand"><b>When can I retire? — retirement plan report</b></div>
       <div className="btn-row no-print" style={{ marginBottom: 14 }}>
-        <button className="btn primary" onClick={() => window.print()}>Print / save as PDF</button>
+        <button className="btn cta" onClick={() => window.print()}>Download PDF report</button>
         <span className="muted small">Uses your browser&apos;s print dialogue — choose &quot;Save as PDF&quot; as the destination for a file.</span>
       </div>
 

@@ -21,10 +21,14 @@ interface StoreShape {
   update: (mutate: (draft: Scenario) => void) => void;
   replaceActive: (scenario: Scenario) => void;
   create: (kind: 'empty' | 'sample') => void;
-  duplicate: () => void;
-  remove: () => void;
+  duplicate: (id?: string) => void;
+  remove: (id?: string) => void;
   importJson: (text: string) => string | null; // returns error message or null
   exportJson: () => string;
+  /** Persist immediately (local + cloud when signed in). True if saved to the account. */
+  saveNow: () => Promise<boolean>;
+  /** Open the sample household, creating it if needed. */
+  openSample: () => void;
   loaded: boolean;
   // Optional cloud account (Google sign-in via Supabase)
   cloudOn: boolean;
@@ -147,20 +151,22 @@ export function StoreProvider({ children, startWithDemo }: { children: React.Rea
       setScenarios((prev) => [...prev, s]);
       setActiveId(s.id);
     },
-    duplicate: () => {
-      const copy: Scenario = JSON.parse(JSON.stringify(active));
+    duplicate: (id) => {
+      const src = scenarios.find((s) => s.id === id) ?? active;
+      const copy: Scenario = JSON.parse(JSON.stringify(src));
       copy.id = uid('scn');
-      copy.name = `${active.name} (copy)`;
+      copy.name = `${src.name} (copy)`;
       copy.createdAt = new Date().toISOString();
       setScenarios((prev) => [...prev, copy]);
       setActiveId(copy.id);
     },
-    remove: () => {
-      if (userId) void deleteCloudScenario(active.id);
+    remove: (id) => {
+      const targetId = id ?? active.id;
+      if (userId) void deleteCloudScenario(targetId);
       setScenarios((prev) => {
-        const rest = prev.filter((s) => s.id !== active.id);
+        const rest = prev.filter((s) => s.id !== targetId);
         const next = rest.length ? rest : [emptyScenario()];
-        setActiveId(next[next.length - 1].id);
+        setActiveId((cur) => (cur === targetId || !rest.length ? next[next.length - 1].id : cur));
         return next;
       });
     },
@@ -198,6 +204,19 @@ export function StoreProvider({ children, startWithDemo }: { children: React.Rea
       }
     },
     exportJson: () => JSON.stringify(active, null, 2),
+    saveNow: async () => {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ scenarios, activeId: active.id })); } catch { /* quota */ }
+      if (!userId) return false;
+      await upsertCloudScenario(active);
+      return true;
+    },
+    openSample: () => {
+      const existing = scenarios.find((s) => s.name === 'Sample household');
+      if (existing) { setActiveId(existing.id); return; }
+      const s = sampleScenario();
+      setScenarios((prev) => [...prev, s]);
+      setActiveId(s.id);
+    },
     cloudOn: cloudEnabled(),
     userEmail,
     signIn: () => { void signInWithGoogle(); },

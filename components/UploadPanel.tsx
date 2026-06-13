@@ -114,7 +114,7 @@ export default function UploadPanel({ onDone }: { onDone?: () => void }) {
             </>
           )}
           <div className="btn-row" style={{ marginTop: 10 }}>
-            <button className="btn primary" onClick={whenCanIRetire} disabled={solving}>
+            <button className="btn cta" onClick={whenCanIRetire} disabled={solving}>
               {solving ? 'Working it out…' : 'When can I retire?'}
             </button>
             <button className="btn" onClick={() => onDone?.()}>Open in the planner</button>

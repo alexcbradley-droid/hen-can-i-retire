@@ -9,6 +9,14 @@ export default function ScenarioBar() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved-cloud' | 'saved-local'>('idle');
+
+  const savePlan = async () => {
+    setSaveState('saving');
+    const cloud = await store.saveNow();
+    setSaveState(cloud ? 'saved-cloud' : 'saved-local');
+    setTimeout(() => setSaveState('idle'), 3500);
+  };
 
   const exportFile = () => {
     downloadFile(`${slugify(store.active.name)}.json`, store.exportJson(), 'application/json');
@@ -31,6 +39,13 @@ export default function ScenarioBar() {
         aria-label="Scenario name"
       />
       <div className="btn-row">
+        <button className="btn small cta" onClick={savePlan} disabled={saveState === 'saving'}
+          title="Plans auto-save in this browser; sign in to keep them in your account too">
+          {saveState === 'saving' ? 'Saving…'
+            : saveState === 'saved-cloud' ? 'Saved to your account ✓'
+            : saveState === 'saved-local' ? 'Saved in this browser ✓'
+            : 'Save plan'}
+        </button>
         <button className="btn small" onClick={() => store.create('empty')}>New</button>
         <button className="btn small" onClick={() => store.duplicate()}>Duplicate</button>
         <button className="btn small" onClick={() => store.create('sample')}>Sample</button>
