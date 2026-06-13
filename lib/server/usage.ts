@@ -9,8 +9,11 @@ import { createClient } from '@supabase/supabase-js';
 import type { NextRequest } from 'next/server';
 
 export function callerIdentity(req: NextRequest): string {
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-    || req.headers.get('x-real-ip')
+  // Prefer the platform-set header (Vercel writes x-real-ip itself) over
+  // x-forwarded-for, whose leftmost entry can be attacker-prepended on some
+  // proxy setups.
+  const ip = req.headers.get('x-real-ip')
+    || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
     || 'unknown';
   return createHash('sha256').update(`wcir:${ip}`).digest('hex').slice(0, 32);
 }

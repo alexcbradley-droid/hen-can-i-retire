@@ -5,7 +5,7 @@
 
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Scenario } from './engine/types';
-import { emptyScenario, sampleScenario, uid } from './engine/defaults';
+import { emptyScenario, sampleScenario, uid, SAMPLE_SCENARIO_NAME } from './engine/defaults';
 import {
   cloudEnabled, onAuthChange, signInWithGoogle, signOut,
   fetchCloudScenarios, upsertCloudScenario, deleteCloudScenario,
@@ -52,6 +52,9 @@ export function StoreProvider({ children, startWithDemo }: { children: React.Rea
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Scenarios edited since load — only these are auto-uploaded, so merely
+  // visiting a page never writes an untouched empty plan to the account.
+  const dirtyIds = useRef(new Set<string>());
 
   useEffect(() => onAuthChange((u) => {
     setUserEmail(u?.email ?? null);
@@ -75,7 +78,9 @@ export function StoreProvider({ children, startWithDemo }: { children: React.Rea
         const cloudById = new Map(cloud.map((s) => [s.id, s]));
         for (const s of merged) {
           const cs = cloudById.get(s.id);
-          if (!cs || cs.updatedAt < s.updatedAt) void upsertCloudScenario(s);
+          const hasContent = s.employments.length + s.accounts.length + s.dcPensions.length
+            + s.dbPensions.length + s.properties.length > 0;
+          if ((!cs || cs.updatedAt < s.updatedAt) && hasContent) void upsertCloudScenario(s);
         }
         return merged;
       });
@@ -95,14 +100,14 @@ export function StoreProvider({ children, startWithDemo }: { children: React.Rea
     } catch { /* corrupted storage: start fresh */ }
     if (!list.length) {
       list = startWithDemo ? [sampleScenario()] : [emptyScenario()];
-    } else if (startWithDemo && !list.some((s) => s.name === 'Sample household')) {
+    } else if (startWithDemo && !list.some((s) => s.name === SAMPLE_SCENARIO_NAME)) {
       list = [...list, sampleScenario()];
     }
     setScenarios(list);
     setActiveId((prev) => {
       if (startWithDemo) {
         // The demo link should open the sample household specifically.
-        const sample = list.find((s) => s.name === 'Sample household');
+        const sample = list.find((s) => s.name === SAMPLE_SCENARIO_NAME);
         if (sample) return sample.id;
       }
       return prev && list.some((s) => s.id === prev) ? prev : list[list.length - 1].id;
@@ -116,9 +121,11 @@ export function StoreProvider({ children, startWithDemo }: { children: React.Rea
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ scenarios, activeId })); } catch { /* quota */ }
-      if (userId) {
+      if (userId && dirtyIds.current.has(activeId)) {
         const current = scenarios.find((s) => s.id === activeId);
-        if (current) void upsertCloudScenario(current);
+        if (current) {
+          void upsertCloudScenario(current).then((ok) => { if (ok) dirtyIds.current.delete(current.id); });
+        }
       }
     }, 400);
   }, [scenarios, activeId, loaded, userId]);
@@ -135,6 +142,7 @@ export function StoreProvider({ children, startWithDemo }: { children: React.Rea
     loaded,
     setActive: setActiveId,
     update: (mutate) => {
+      dirtyIds.current.add(active.id);
       setScenarios((prev) => prev.map((s) => {
         if (s.id !== active.id) return s;
         const draft: Scenario = JSON.parse(JSON.stringify(s));
@@ -144,6 +152,7 @@ export function StoreProvider({ children, startWithDemo }: { children: React.Rea
       }));
     },
     replaceActive: (scenario) => {
+      dirtyIds.current.add(active.id);
       setScenarios((prev) => prev.map((s) => (s.id === active.id ? { ...scenario, id: active.id } : s)));
     },
     create: (kind) => {
@@ -157,6 +166,7 @@ export function StoreProvider({ children, startWithDemo }: { children: React.Rea
       copy.id = uid('scn');
       copy.name = `${src.name} (copy)`;
       copy.createdAt = new Date().toISOString();
+      dirtyIds.current.add(copy.id);
       setScenarios((prev) => [...prev, copy]);
       setActiveId(copy.id);
     },
@@ -196,6 +206,7 @@ export function StoreProvider({ children, startWithDemo }: { children: React.Rea
             assumptions: { ...base.assumptions, ...s.assumptions },
           });
         }
+        for (const s of list) dirtyIds.current.add(s.id);
         setScenarios((prev) => [...prev, ...list]);
         setActiveId(list[list.length - 1].id);
         return null;
@@ -207,15 +218,24 @@ export function StoreProvider({ children, startWithDemo }: { children: React.Rea
     saveNow: async () => {
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ scenarios, activeId: active.id })); } catch { /* quota */ }
       if (!userId) return false;
-      await upsertCloudScenario(active);
-      return true;
+      const ok = await upsertCloudScenario(active);
+      if (ok) dirtyIds.current.delete(active.id);
+      return ok;
     },
     openSample: () => {
-      const existing = scenarios.find((s) => s.name === 'Sample household');
-      if (existing) { setActiveId(existing.id); return; }
-      const s = sampleScenario();
-      setScenarios((prev) => [...prev, s]);
-      setActiveId(s.id);
+      // Functional update so a double invocation (StrictMode) or a stale
+      // closure can never create two samples.
+      setScenarios((prev) => {
+        const existing = prev.find((s) => s.name === SAMPLE_SCENARIO_NAME);
+        if (existing) {
+          setActiveId(existing.id);
+          return prev;
+        }
+        const s = sampleScenario();
+        dirtyIds.current.add(s.id);
+        setActiveId(s.id);
+        return [...prev, s];
+      });
     },
     cloudOn: cloudEnabled(),
     userEmail,

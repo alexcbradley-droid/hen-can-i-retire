@@ -8,6 +8,7 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '@/lib/store';
 import { cloudClient } from '@/lib/cloud';
+import { LIMITS } from '@/lib/limits';
 
 interface Stats {
   signedInUsers: number;
@@ -26,10 +27,14 @@ export default function AdminPage() {
     if (!store.userEmail) return;
     const c = cloudClient();
     if (!c) { setError('Cloud features are not configured.'); return; }
-    c.rpc('admin_stats').then(({ data, error: e }) => {
-      if (e) setError('Not authorised — this page is for the site owner.');
-      else setStats(data as Stats);
-    });
+    Promise.resolve(c.rpc('admin_stats')).then(({ data, error: e }) => {
+      if (e) {
+        // Distinguish "you are not the owner" from "the service is down".
+        setError(/not authorised/i.test(e.message)
+          ? 'Not authorised — this page is for the site owner.'
+          : `Could not load stats (${e.message}). Try again in a minute.`);
+      } else setStats(data as Stats);
+    }).catch(() => setError('Could not reach the database. Try again in a minute.'));
   }, [store.userEmail]);
 
   if (!store.userEmail) {
@@ -93,9 +98,9 @@ export default function AdminPage() {
       <div className="card">
         <h3>Cost controls in place</h3>
         <ul className="small" style={{ lineHeight: 1.9 }}>
-          <li><b>Per-caller daily limits</b> — 60 chat messages and 12 spreadsheet imports per caller (hashed IP) per 24 hours, enforced in the database before any AI call is made.</li>
-          <li><b>Payload caps</b> — chat history limited to 20 messages of 4,000 characters; spreadsheet content capped at 250,000 characters; plan context capped at 30,000 characters.</li>
-          <li><b>Output caps</b> — chat replies max ~1,600 tokens at low effort; the engine itself runs in the browser at no cost.</li>
+          <li><b>Per-caller daily limits</b> — {LIMITS.chatPerDay} chat messages and {LIMITS.interpretPerDay} spreadsheet imports per caller (hashed IP) per 24 hours, enforced in the database before any AI call is made.</li>
+          <li><b>Payload caps</b> — chat history limited to {LIMITS.chatHistoryMessages} messages of {LIMITS.chatMessageChars.toLocaleString()} characters; spreadsheet content capped at {LIMITS.sheetTotalChars.toLocaleString()} characters; plan context capped at {LIMITS.chatContextChars.toLocaleString()} characters.</li>
+          <li><b>Output caps</b> — chat replies max ~{LIMITS.chatMaxOutputTokens.toLocaleString()} tokens at low effort; the engine itself runs in the browser at no cost.</li>
           <li><b>Bots</b> — limits are per-IP-hash so a scripted client hits the daily cap quickly; for stronger protection enable Vercel&apos;s Bot Protection / Attack Challenge Mode (Project → Firewall), and set a monthly spend limit in the Anthropic console as a backstop.</li>
         </ul>
       </div>

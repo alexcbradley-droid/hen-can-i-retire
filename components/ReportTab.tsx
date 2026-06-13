@@ -8,6 +8,7 @@ import { gbp, gbpShort, ymLabel } from '@/lib/format';
 import { NetWorthChart, IncomeSpendChart } from './charts';
 import { assetById } from '@/lib/engine/assets';
 import { RULES_VERSION } from '@/lib/engine/uk-rules';
+import { PrintBrand } from './PrintBrand';
 
 export default function ReportTab({ projection }: { projection: ProjectionResult }) {
   const { active: s } = useStore();
@@ -20,7 +21,7 @@ export default function ReportTab({ projection }: { projection: ProjectionResult
 
   return (
     <div>
-      <div className="print-brand"><b>When can I retire? — retirement plan report</b></div>
+      <PrintBrand title="retirement plan report" />
       <div className="btn-row no-print" style={{ marginBottom: 14 }}>
         <button className="btn cta" onClick={() => window.print()}>Download PDF report</button>
         <span className="muted small">Uses your browser&apos;s print dialogue — choose &quot;Save as PDF&quot; as the destination for a file.</span>

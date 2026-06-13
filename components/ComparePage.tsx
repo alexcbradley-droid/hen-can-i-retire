@@ -5,10 +5,11 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useStore } from '@/lib/store';
-import { fullProjection } from '@/lib/engine/solvers';
+import { cachedProjection } from '@/lib/projection-cache';
+import { ProjectionResult } from '@/lib/engine/types';
 import { gbp, gbpShort, ymLabel } from '@/lib/format';
 import { CompareChart } from './charts';
-import { RULES_VERSION } from '@/lib/engine/uk-rules';
+import { PrintBrand, PrintMeta } from './PrintBrand';
 
 const MAX = 3;
 
@@ -23,7 +24,7 @@ export default function ComparePage() {
   const chosen = store.scenarios.filter((s) => ids.includes(s.id)).slice(0, MAX);
 
   const results = useMemo(
-    () => chosen.map((s) => ({ s, r: fullProjection(s) })),
+    () => chosen.map((s) => ({ s, r: cachedProjection(s) })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [chosen.map((s) => `${s.id}:${s.updatedAt}`).join('|')],
   );
@@ -31,7 +32,9 @@ export default function ComparePage() {
   const toggle = (id: string) => {
     setPicked((prev) => {
       const cur = prev.length ? prev : ids;
-      if (cur.includes(id)) return cur.filter((x) => x !== id);
+      // Keep at least one selected — deselecting to zero would silently
+      // bounce back to the default selection.
+      if (cur.includes(id)) return cur.length > 1 ? cur.filter((x) => x !== id) : cur;
       if (cur.length >= MAX) return cur;
       return [...cur, id];
     });
@@ -52,7 +55,7 @@ export default function ComparePage() {
     );
   }
 
-  const rows: { label: string; value: (r: ReturnType<typeof fullProjection>, planToAge: number) => string; cls?: (r: ReturnType<typeof fullProjection>) => string }[] = [
+  const rows: { label: string; value: (r: ProjectionResult, planToAge: number) => string; cls?: (r: ProjectionResult) => string }[] = [
     { label: 'Plan status', value: (r, age) => (r.metrics.successToPlanAge ? `On track to ${age}` : `Runs out at ${r.metrics.runOutAge}`), cls: (r) => (r.metrics.successToPlanAge ? 'pill good' : 'pill bad') },
     { label: 'Planned retirement', value: (r) => ymLabel(r.metrics.retirementDate) },
     { label: 'Earliest possible', value: (r) => (r.metrics.earliestRetirementDate ? ymLabel(r.metrics.earliestRetirementDate) : 'Later than planned') },
@@ -67,7 +70,7 @@ export default function ComparePage() {
 
   return (
     <main className="container" style={{ paddingTop: 24 }}>
-      <div className="print-brand"><b>When can I retire? — plan comparison</b></div>
+      <PrintBrand title="plan comparison" />
       <div className="panel-title no-print">
         <h1>Compare plans</h1>
         <span className="hint">Pick up to {MAX} plans to see them side by side.</span>
@@ -90,10 +93,7 @@ export default function ComparePage() {
       </div>
 
       <div className="card">
-        <p className="muted small print-only" style={{ margin: '0 0 8px' }}>
-          Prepared {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })} ·
-          Rules: {RULES_VERSION} · Guidance only, not financial advice.
-        </p>
+        <PrintMeta />
         <div className="table-wrap">
           <table className="data">
             <thead>

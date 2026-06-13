@@ -48,9 +48,12 @@ export function emptyScenario(name = 'My plan'): Scenario {
   };
 }
 
+/** Display name of the demo plan — used to find it again across sessions. */
+export const SAMPLE_SCENARIO_NAME = 'Sample household';
+
 /** Richer sample household used for the demo and tests. */
 export function sampleScenario(): Scenario {
-  const s = emptyScenario('Sample household');
+  const s = emptyScenario(SAMPLE_SCENARIO_NAME);
   const you = s.people[0];
   you.name = 'Alex';
   you.dateOfBirth = '1972-07-30';

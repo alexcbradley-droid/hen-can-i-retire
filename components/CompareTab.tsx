@@ -2,27 +2,9 @@
 
 import { useMemo } from 'react';
 import { useStore } from '@/lib/store';
-import { fullProjection } from '@/lib/engine/solvers';
-import { ProjectionResult } from '@/lib/engine/types';
+import { cachedProjection } from '@/lib/projection-cache';
 import { gbp, gbpShort, ymLabel } from '@/lib/format';
 import { CompareChart } from './charts';
-
-// Projections cached per scenario version so editing one scenario never
-// recomputes the others. Bounded by eviction of ids no longer present.
-const projectionCache = new Map<string, ProjectionResult>();
-
-function cachedProjection(s: { id: string; updatedAt: string }): ProjectionResult {
-  const key = `${s.id}:${s.updatedAt}`;
-  let r = projectionCache.get(key);
-  if (!r) {
-    r = fullProjection(s as Parameters<typeof fullProjection>[0]);
-    for (const k of Array.from(projectionCache.keys())) {
-      if (k.startsWith(s.id + ':')) projectionCache.delete(k); // drop stale versions
-    }
-    projectionCache.set(key, r);
-  }
-  return r;
-}
 
 export default function CompareTab() {
   const { scenarios, active } = useStore();

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { checkAndLogUsage } from '@/lib/server/usage';
+import { LIMITS } from '@/lib/limits';
 
 export const maxDuration = 60;
 
@@ -158,7 +159,7 @@ export async function POST(req: NextRequest) {
 
   // Per-caller daily cap: spreadsheet reads are the most expensive AI call.
   const estCost = (content.length / 3 / 1e6) * 5 + 0.04;
-  const { allowed } = await checkAndLogUsage(req, 'interpret', estCost, 12);
+  const { allowed } = await checkAndLogUsage(req, 'interpret', estCost, LIMITS.interpretPerDay);
   if (!allowed) {
     return NextResponse.json(
       { error: 'You have reached today’s limit for spreadsheet imports. It resets within 24 hours — you can still enter details manually.' },

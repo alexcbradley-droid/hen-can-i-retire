@@ -6,11 +6,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '@/lib/store';
-import { simulate } from '@/lib/engine/engine';
 import { Scenario } from '@/lib/engine/types';
 
 interface Change { path: string; label: string; value: string | number | boolean }
-interface Msg { role: 'user' | 'assistant'; content: string; changes?: Change[] }
+interface Msg { role: 'user' | 'assistant'; content: string; changes?: Change[]; changesPlanId?: string }
 
 const STARTERS = [
   'When can I retire?',
@@ -25,14 +24,21 @@ const EDITABLE_ROOTS = new Set([
   'accounts', 'properties', 'events', 'spending', 'assumptions', 'goals',
 ]);
 
+// Segments that walk the prototype chain are never legitimate plan fields.
+const FORBIDDEN_SEGMENTS = new Set(['__proto__', 'constructor', 'prototype']);
+
 function applyChange(target: Scenario, path: string, value: unknown): boolean {
   if (!/^[a-zA-Z0-9_.[\]]+$/.test(path)) return false;
   const parts = path.split('.').flatMap((p) => p.split(/[[\]]/).filter(Boolean));
   if (!parts.length || !EDITABLE_ROOTS.has(parts[0])) return false;
+  if (parts.some((p) => FORBIDDEN_SEGMENTS.has(p))) return false;
   let obj: unknown = target;
   for (let i = 0; i < parts.length - 1; i++) {
     const key = /^\d+$/.test(parts[i]) ? Number(parts[i]) : parts[i];
-    if (obj === null || typeof obj !== 'object' || !(key in (obj as object))) return false;
+    // Own properties only — `in` would match inherited keys and allow the
+    // walk to escape the plan object (prototype pollution).
+    if (obj === null || typeof obj !== 'object'
+      || !Object.prototype.hasOwnProperty.call(obj, key)) return false;
     obj = (obj as Record<string | number, unknown>)[key as string | number];
   }
   if (obj === null || typeof obj !== 'object') return false;
@@ -51,6 +57,8 @@ export default function ChatAssistant() {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const logRef = useRef<HTMLDivElement>(null);
+  // Context memo: re-simulating is pointless while the plan hasn't changed.
+  const contextRef = useRef<{ key: string; value: unknown } | null>(null);
 
   useEffect(() => {
     logRef.current?.scrollTo({ top: 1e6, behavior: 'smooth' });
@@ -64,11 +72,20 @@ export default function ChatAssistant() {
     setInput('');
     setBusy(true);
     try {
-      let context: unknown = null;
-      try {
-        const r = simulate(store.active);
-        context = { scenario: store.active, metrics: r.metrics, warnings: r.warnings };
-      } catch { /* a broken draft plan should not break chat */ }
+      const key = `${store.active.id}:${store.active.updatedAt}`;
+      let context: unknown;
+      if (contextRef.current?.key === key) {
+        context = contextRef.current.value;
+      } else {
+        // Engine loaded on demand so the marketing pages stay light.
+        context = { scenario: store.active, metrics: null as unknown, warnings: [] as string[] };
+        try {
+          const { simulate } = await import('@/lib/engine/engine');
+          const r = simulate(store.active);
+          context = { scenario: store.active, metrics: r.metrics, warnings: r.warnings };
+        } catch { /* a broken draft plan still gets scenario-only context */ }
+        contextRef.current = { key, value: context };
+      }
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -82,6 +99,7 @@ export default function ChatAssistant() {
         role: 'assistant',
         content: data.reply || data.error || 'Sorry, something went wrong.',
         changes: Array.isArray(data.changes) && data.changes.length ? data.changes : undefined,
+        changesPlanId: store.active.id,
       }]);
     } catch {
       setMessages((m) => [...m, { role: 'assistant', content: 'Sorry, I could not reach the assistant. Please try again.' }]);
@@ -90,27 +108,42 @@ export default function ChatAssistant() {
     }
   };
 
-  const applyChanges = (idx: number, changes: Change[]) => {
+  const applyChanges = async (idx: number, changes: Change[], changesPlanId?: string) => {
+    const finish = (note: string, clearCard: boolean) => {
+      setMessages((m) => {
+        const cleared = clearCard ? m.map((msg, i) => (i === idx ? { ...msg, changes: undefined } : msg)) : m;
+        return [...cleared, { role: 'assistant' as const, content: note }];
+      });
+    };
+    // The proposal was made against a specific plan — never apply it to another.
+    if (changesPlanId && changesPlanId !== store.active.id) {
+      finish(`These changes were proposed for a different plan. Switch back to that plan (My plans) to apply them, or ask again for “${store.active.name}”.`, false);
+      return;
+    }
     const copy: Scenario = JSON.parse(JSON.stringify(store.active));
     const failed: string[] = [];
     for (const c of changes) {
       if (!applyChange(copy, c.path, c.value)) failed.push(c.label || c.path);
     }
+    if (failed.length === changes.length) {
+      finish('I couldn’t apply those changes — the fields didn’t match your plan. Try the "Your details" tab, or ask me again more specifically.', true);
+      return;
+    }
     try {
+      const { simulate } = await import('@/lib/engine/engine');
       simulate(copy); // sanity check: never apply a change that breaks the engine
     } catch {
-      setMessages((m) => [...m, { role: 'assistant', content: 'Those changes would break the plan, so I have not applied them.' }]);
+      finish('Those changes would break the plan, so I have not applied them.', false);
       return;
     }
     copy.updatedAt = new Date().toISOString();
     store.replaceActive(copy);
-    setMessages((m) => m.map((msg, i) => (i === idx ? { ...msg, changes: undefined } : msg)));
-    setMessages((m) => [...m, {
-      role: 'assistant',
-      content: failed.length
+    finish(
+      failed.length
         ? `Applied, except: ${failed.join(', ')}. Check those on the "Your details" tab.`
         : 'Done — your plan has been updated. The results recalculate automatically.',
-    }]);
+      true,
+    );
   };
 
   const dismissChanges = (idx: number) => {
@@ -143,7 +176,7 @@ export default function ChatAssistant() {
                     {m.changes.map((c, j) => <li key={j}>{c.label || c.path}: <b>{String(c.value)}</b></li>)}
                   </ul>
                   <div className="btn-row">
-                    <button className="btn small cta" onClick={() => applyChanges(i, m.changes!)}>Apply changes</button>
+                    <button className="btn small cta" onClick={() => void applyChanges(i, m.changes!, m.changesPlanId)}>Apply changes</button>
                     <button className="btn small" onClick={() => dismissChanges(i)}>Dismiss</button>
                   </div>
                 </div>

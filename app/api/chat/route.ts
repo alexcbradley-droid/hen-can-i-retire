@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { checkAndLogUsage } from '@/lib/server/usage';
+import { LIMITS } from '@/lib/limits';
 
 export const maxDuration = 30;
 
@@ -88,13 +89,16 @@ export async function POST(req: NextRequest) {
   }
   const history = (body.messages ?? [])
     .filter((m) => (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
-    .slice(-20)
-    .map((m) => ({ role: m.role, content: m.content.slice(0, 4000) }));
+    .slice(-LIMITS.chatHistoryMessages)
+    .map((m) => ({ role: m.role, content: m.content.slice(0, LIMITS.chatMessageChars) }));
+  // The Messages API requires the first message to be from the user — drop any
+  // leading assistant greeting (or assistant-first window after slicing).
+  while (history.length && history[0].role !== 'user') history.shift();
   if (!history.length || history[history.length - 1].role !== 'user') {
     return NextResponse.json({ error: 'No question received.' }, { status: 400 });
   }
 
-  const { allowed } = await checkAndLogUsage(req, 'chat', 0.02, 60);
+  const { allowed } = await checkAndLogUsage(req, 'chat', LIMITS.estChatCostUsd, LIMITS.chatPerDay);
   if (!allowed) {
     return NextResponse.json({
       reply: 'You have reached today’s limit for the assistant. It resets within 24 hours — meanwhile the Help and Methodology pages cover most questions.',
@@ -106,7 +110,7 @@ export async function POST(req: NextRequest) {
   let contextBlock = '';
   if (body.context) {
     try {
-      contextBlock = JSON.stringify(body.context).slice(0, 30000);
+      contextBlock = JSON.stringify(body.context).slice(0, LIMITS.chatContextChars);
     } catch { /* ignore malformed context */ }
   }
 
@@ -114,7 +118,7 @@ export async function POST(req: NextRequest) {
   try {
     const response = await client.messages.create({
       model: 'claude-opus-4-8',
-      max_tokens: 1600,
+      max_tokens: LIMITS.chatMaxOutputTokens,
       output_config: {
         effort: 'low',
         format: { type: 'json_schema', schema: RESPONSE_SCHEMA as unknown as Record<string, unknown> },
@@ -142,7 +146,9 @@ export async function POST(req: NextRequest) {
         changes: Array.isArray(parsed.changes) ? parsed.changes.slice(0, 12) : [],
       });
     } catch {
-      return NextResponse.json({ reply: text.text });
+      // Structured output that fails to parse is truncated JSON, not prose —
+      // never show it raw.
+      return NextResponse.json({ reply: 'That answer ran too long — please ask a more specific question.' });
     }
   } catch (err) {
     console.error('chat error', err);

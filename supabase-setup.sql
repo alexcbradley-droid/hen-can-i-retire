@@ -48,20 +48,38 @@ create or replace function public.log_usage(
   p_identity text, p_kind text, p_cost_usd numeric, p_daily_limit int
 ) returns boolean
 language plpgsql security definer set search_path = public as $$
-declare cnt int;
+declare
+  cnt int;
+  total int;
+  ceiling int;
 begin
   if p_identity is null or length(p_identity) > 64
      or p_kind not in ('chat', 'interpret', 'signin') then
     return false;
   end if;
+  -- The caller-supplied limit can only tighten the server-side ceiling, so a
+  -- direct call with the public anon key cannot raise it.
+  ceiling := least(coalesce(p_daily_limit, 0), case p_kind
+    when 'chat' then 60
+    when 'interpret' then 12
+    else 20 end);
+  if ceiling <= 0 then
+    return false;
+  end if;
   select count(*) into cnt from usage_events
     where identity = p_identity and kind = p_kind
       and created_at > now() - interval '24 hours';
-  if cnt >= p_daily_limit then
+  if cnt >= ceiling then
+    return false;
+  end if;
+  -- Global per-identity cap bounds table growth from any single caller.
+  select count(*) into total from usage_events
+    where identity = p_identity and created_at > now() - interval '24 hours';
+  if total >= 200 then
     return false;
   end if;
   insert into usage_events (identity, kind, cost_usd, user_id)
-    values (p_identity, p_kind, least(greatest(p_cost_usd, 0), 10), auth.uid());
+    values (p_identity, p_kind, least(greatest(p_cost_usd, 0), 2), auth.uid());
   return true;
 end $$;
 

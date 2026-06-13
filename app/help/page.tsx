@@ -1,5 +1,3 @@
-import ChatWidget from '@/components/ChatWidget';
-
 export const metadata = { title: 'Help — When Can I Retire?' };
 
 const checklist: { item: string; where: string }[] = [
@@ -41,8 +39,18 @@ export default function HelpPage() {
             Google (top right) to save your scenarios to your account and pick them up on any device.
           </p>
         </div>
-        <div>
-          <ChatWidget />
+        <div className="card">
+          <h3>Ask the assistant</h3>
+          <p className="small muted">
+            The planner assistant lives in the bottom-right corner of every page — tap{' '}
+            <b>💬 Ask the assistant</b>. It can see the plan you are working on and its results, so you
+            can ask things like &quot;where do I find my State Pension forecast?&quot;, &quot;how did you
+            calculate my net worth at retirement?&quot; or even &quot;set my retirement spending to
+            £2,500 a month&quot; — changes are only applied after you confirm them.
+          </p>
+          <p className="small muted" style={{ marginBottom: 0 }}>
+            Guidance only — the assistant cannot give financial advice or recommend products.
+          </p>
         </div>
       </div>
     </main>

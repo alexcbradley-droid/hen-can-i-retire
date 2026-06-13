@@ -9,13 +9,19 @@ export default function ScenarioBar() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved-cloud' | 'saved-local'>('idle');
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved-cloud' | 'saved-local' | 'failed'>('idle');
 
   const savePlan = async () => {
     setSaveState('saving');
-    const cloud = await store.saveNow();
-    setSaveState(cloud ? 'saved-cloud' : 'saved-local');
-    setTimeout(() => setSaveState('idle'), 3500);
+    try {
+      const cloud = await store.saveNow();
+      // saveNow always writes locally; `cloud` is true only when the account
+      // write demonstrably succeeded.
+      setSaveState(cloud ? 'saved-cloud' : store.userEmail ? 'failed' : 'saved-local');
+    } catch {
+      setSaveState('failed');
+    }
+    setTimeout(() => setSaveState('idle'), 4000);
   };
 
   const exportFile = () => {
@@ -44,6 +50,7 @@ export default function ScenarioBar() {
           {saveState === 'saving' ? 'Saving…'
             : saveState === 'saved-cloud' ? 'Saved to your account ✓'
             : saveState === 'saved-local' ? 'Saved in this browser ✓'
+            : saveState === 'failed' ? 'Account save failed — saved locally'
             : 'Save plan'}
         </button>
         <button className="btn small" onClick={() => store.create('empty')}>New</button>

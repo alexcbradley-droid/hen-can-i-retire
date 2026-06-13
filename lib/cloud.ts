@@ -51,16 +51,19 @@ export async function fetchCloudScenarios(): Promise<Scenario[]> {
     .filter((s) => s && s.people?.length && s.spending && s.assumptions);
 }
 
-export async function upsertCloudScenario(s: Scenario): Promise<void> {
+/** True only when the row demonstrably reached the account. */
+export async function upsertCloudScenario(s: Scenario): Promise<boolean> {
   const c = cloudClient();
-  if (!c) return;
+  if (!c) return false;
   const { data: auth } = await c.auth.getSession();
   const userId = auth.session?.user.id;
-  if (!userId) return;
-  await c.from('scenarios').upsert(
+  if (!userId) return false;
+  const { error } = await c.from('scenarios').upsert(
     { id: s.id, user_id: userId, name: s.name, data: s, updated_at: s.updatedAt },
     { onConflict: 'user_id,id' },
   );
+  if (error) console.warn('cloud save failed:', error.message);
+  return !error;
 }
 
 export async function deleteCloudScenario(id: string): Promise<void> {
