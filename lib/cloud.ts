@@ -32,6 +32,14 @@ export async function signOut(): Promise<void> {
   await cloudClient()?.auth.signOut();
 }
 
+/** Current session's access token (a verifiable JWT), or null if signed out. */
+export async function accessToken(): Promise<string | null> {
+  const c = cloudClient();
+  if (!c) return null;
+  const { data } = await c.auth.getSession();
+  return data.session?.access_token ?? null;
+}
+
 /** Subscribe to auth state; fires immediately with the current user. */
 export function onAuthChange(cb: (user: User | null) => void): () => void {
   const c = cloudClient();

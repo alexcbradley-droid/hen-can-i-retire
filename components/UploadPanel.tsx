@@ -6,6 +6,8 @@
 import { useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { useStore } from '@/lib/store';
+import { accessToken } from '@/lib/cloud';
+import { useSignInGate } from './Gate';
 import { Intake, intakeToScenario } from '@/lib/intake';
 import { Scenario } from '@/lib/engine/types';
 import { earliestRetirementDate, sustainableMonthlyIncome, withRetirementDate } from '@/lib/engine/solvers';
@@ -13,6 +15,7 @@ import { gbp, ymLabel } from '@/lib/format';
 
 export default function UploadPanel({ onDone }: { onDone?: () => void }) {
   const store = useStore();
+  const { gated, signIn } = useSignInGate();
   const fileRef = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<'idle' | 'reading' | 'thinking'>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -49,9 +52,13 @@ export default function UploadPanel({ onDone }: { onDone?: () => void }) {
       })).filter((s) => s.csv.trim().length > 0);
       if (!sheets.length) throw new Error('That file looks empty.');
       setState('thinking');
+      const token = await accessToken();
       const res = await fetch('/api/interpret', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ sheets }),
       });
       const data = await res.json();
@@ -67,6 +74,19 @@ export default function UploadPanel({ onDone }: { onDone?: () => void }) {
       setState('idle');
     }
   };
+
+  if (gated) {
+    return (
+      <div className="dropzone" style={{ cursor: 'default' }}>
+        <p style={{ margin: 0 }}><b>Sign in to upload a spreadsheet</b></p>
+        <p className="small" style={{ margin: '6px 0 12px' }}>
+          The AI reader is for signed-in users — this keeps it free of bots and automated abuse.
+          You can still enter your details by hand without signing in.
+        </p>
+        <button className="btn cta" onClick={signIn}>Sign up / in with Google</button>
+      </div>
+    );
+  }
 
   return (
     <div>

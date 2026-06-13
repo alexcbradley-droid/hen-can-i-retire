@@ -9,9 +9,11 @@ import { NetWorthChart, IncomeSpendChart } from './charts';
 import { assetById } from '@/lib/engine/assets';
 import { RULES_VERSION } from '@/lib/engine/uk-rules';
 import { PrintBrand } from './PrintBrand';
+import { useSignInGate } from './Gate';
 
 export default function ReportTab({ projection }: { projection: ProjectionResult }) {
   const { active: s } = useStore();
+  const { gated, signIn } = useSignInGate();
   const m = projection.metrics;
   const grid = useMemo(
     () => sensitivityGrid(s),
@@ -23,8 +25,14 @@ export default function ReportTab({ projection }: { projection: ProjectionResult
     <div>
       <PrintBrand title="retirement plan report" />
       <div className="btn-row no-print" style={{ marginBottom: 14 }}>
-        <button className="btn cta" onClick={() => window.print()}>Download PDF report</button>
-        <span className="muted small">Uses your browser&apos;s print dialogue — choose &quot;Save as PDF&quot; as the destination for a file.</span>
+        <button className="btn cta" onClick={gated ? signIn : () => window.print()}>
+          {gated ? 'Sign in to download the PDF' : 'Download PDF report'}
+        </button>
+        <span className="muted small">
+          {gated
+            ? 'Downloads are for signed-in users — this keeps the report off automated scrapers.'
+            : 'Uses your browser’s print dialogue — choose “Save as PDF” as the destination for a file.'}
+        </span>
       </div>
 
       <div className="card">

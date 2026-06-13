@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { checkAndLogUsage } from '@/lib/server/usage';
+import { verifyUser, cloudConfigured } from '@/lib/server/auth';
 import { LIMITS } from '@/lib/limits';
 
 export const maxDuration = 60;
@@ -139,6 +140,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { error: 'AI features are not configured yet. Add the details manually, or ask the site owner to set the ANTHROPIC_API_KEY environment variable.' },
       { status: 503 },
+    );
+  }
+  // Bot gate: when accounts are available, only signed-in (Google-verified)
+  // users may use the paid spreadsheet reader. Verified server-side so a
+  // client can't simply omit the check.
+  if (cloudConfigured() && !(await verifyUser(req))) {
+    return NextResponse.json(
+      { error: 'Please sign in with Google to upload a spreadsheet. This keeps the AI reader free for genuine users.' },
+      { status: 401 },
     );
   }
   let body: { sheets?: { name: string; csv: string }[] };

@@ -9,7 +9,7 @@ import { ASSET_CATALOGUE, assetById } from '@/lib/engine/assets';
 import { statePensionAge, PLSA } from '@/lib/engine/uk-rules';
 import { ymToIndex, indexToYm } from '@/lib/engine/engine';
 import { gbp } from '@/lib/format';
-import { NumField, TextField, MonthField, DateField, SelectField, CheckField } from './fields';
+import { NumField, TextField, MonthField, DateField, SelectField, CheckField, SectionHelp } from './fields';
 import { useMarketData } from './useMarketData';
 
 export default function DetailsTab() {
@@ -338,10 +338,21 @@ export default function DetailsTab() {
                   onChange={(v) => update((d) => { d.properties[pi].rental!.monthlyCosts = v; })} />
               </div>
             )}
-            <CheckField label="Plan to sell" value={!!pr.sale} onChange={(v) => update((d) => {
+            <CheckField label="Plan to sell" value={!!pr.sale}
+              hint="Tick if you intend to sell this property on a set date — for example to downsize or release equity in retirement."
+              onChange={(v) => update((d) => {
               d.properties[pi].sale = v ? { date: addYears(new Date().toISOString().slice(0, 7), 5), proceedsTo: 'invest' } : undefined;
             })} />
             {pr.sale && (
+              <>
+              <SectionHelp>
+                <b>What selling does to the projection:</b> on the sale date the property and any mortgage on it
+                leave your net worth, and the sale proceeds (sale price minus the outstanding mortgage, minus
+                capital gains tax where it applies — your main home is exempt, a second home or rental is not)
+                are added to your savings: either invested (ISA first, then a taxable account) or held as cash,
+                as you choose below. Any rental income from it also stops. If you enter a price for a next home,
+                that amount is spent from the proceeds first and the new home is tracked from then on.
+              </SectionHelp>
               <div className="grid3">
                 <MonthField label="Sale date" value={pr.sale.date}
                   hint="Roughly when you expect to sell — a best guess is fine."
@@ -355,6 +366,7 @@ export default function DetailsTab() {
                   hint="Price of a replacement home in today's money, if downsizing — 0 if not buying."
                   onChange={(v) => update((d) => { d.properties[pi].sale!.buyNext = v > 0 ? { price: v } : undefined; })} />
               </div>
+              </>
             )}
             <button className="btn small danger" onClick={() => update((d) => { d.properties.splice(pi, 1); })}>Remove property</button>
             <hr className="divider" />

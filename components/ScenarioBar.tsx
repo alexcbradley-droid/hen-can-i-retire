@@ -2,10 +2,12 @@
 
 import { useRef, useState } from 'react';
 import { useStore } from '@/lib/store';
+import { useSignInGate } from './Gate';
 import { downloadFile, slugify } from '@/lib/download';
 
 export default function ScenarioBar() {
   const store = useStore();
+  const { gated, signIn } = useSignInGate();
   const fileRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -56,7 +58,10 @@ export default function ScenarioBar() {
         <button className="btn small" onClick={() => store.create('empty')}>New</button>
         <button className="btn small" onClick={() => store.duplicate()}>Duplicate</button>
         <button className="btn small" onClick={() => store.create('sample')}>Sample</button>
-        <button className="btn small" onClick={exportFile}>Export</button>
+        <button className="btn small" onClick={gated ? signIn : exportFile}
+          title={gated ? 'Sign in to download your plan' : 'Download this plan as a file'}>
+          {gated ? 'Sign in to export' : 'Export'}
+        </button>
         <button className="btn small" onClick={() => fileRef.current?.click()}>Import</button>
         {!confirmDelete ? (
           <button className="btn small danger" onClick={() => setConfirmDelete(true)}>Delete</button>
