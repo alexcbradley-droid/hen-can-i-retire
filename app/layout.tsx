@@ -84,8 +84,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 models — avoid including names, addresses or account numbers you would not want processed.
               </p>
               <p>
-                We use privacy-conscious analytics (Microsoft Clarity) to understand how the site is used
-                and improve it. No data is sold, ever.
+                We use privacy-conscious analytics (Microsoft Clarity and Google Analytics), loaded only if
+                you accept cookies, to understand how the site is used and improve it. No data is sold, ever.
               </p>
               <div className="footer-crosssell">
                 <h2>More from this maker</h2>
@@ -102,7 +102,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
             </div>
           </footer>
-          <CookieConsent enabled={CLARITY_ON} clarityId="x6cmyc53rf" />
+          <CookieConsent enabled={CLARITY_ON} clarityId="x6cmyc53rf" gaId="G-QM4TF66QYS" />
         </Providers>
       </body>
     </html>

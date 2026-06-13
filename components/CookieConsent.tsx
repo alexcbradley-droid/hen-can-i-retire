@@ -13,7 +13,7 @@ import Script from 'next/script';
 const KEY = 'wcir-cookie-consent-v1';
 type Consent = 'granted' | 'denied';
 
-export default function CookieConsent({ enabled, clarityId }: { enabled: boolean; clarityId: string }) {
+export default function CookieConsent({ enabled, clarityId, gaId }: { enabled: boolean; clarityId: string; gaId?: string }) {
   // undefined = still reading; null = no choice yet (show banner)
   const [consent, setConsent] = useState<Consent | null | undefined>(undefined);
 
@@ -38,20 +38,33 @@ export default function CookieConsent({ enabled, clarityId }: { enabled: boolean
   return (
     <>
       {consent === 'granted' && (
-        <Script id="ms-clarity" strategy="afterInteractive">
-          {`(function(c,l,a,r,i,t,y){
-              c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-              t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-              y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-          })(window,document,"clarity","script","${clarityId}");`}
-        </Script>
+        <>
+          <Script id="ms-clarity" strategy="afterInteractive">
+            {`(function(c,l,a,r,i,t,y){
+                c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+                t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+                y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+            })(window,document,"clarity","script","${clarityId}");`}
+          </Script>
+          {gaId && (
+            <>
+              <Script src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`} strategy="afterInteractive" />
+              <Script id="ga4" strategy="afterInteractive">
+                {`window.dataLayer = window.dataLayer || [];
+                  function gtag(){dataLayer.push(arguments);}
+                  gtag('js', new Date());
+                  gtag('config', '${gaId}');`}
+              </Script>
+            </>
+          )}
+        </>
       )}
       {consent === null && (
         <div className="cookie-banner no-print" role="dialog" aria-label="Cookie choices">
           <p>
-            We&apos;d like to use privacy-conscious analytics (Microsoft Clarity) to see how the planner
-            is used and improve it. It sets cookies only if you accept. Essential features — saving your
-            plans and signing in — work either way. See the <Link href="/about">About page</Link>.
+            We&apos;d like to use privacy-conscious analytics (Microsoft Clarity and Google Analytics) to see
+            how the planner is used and improve it. They set cookies only if you accept. Essential features —
+            saving your plans and signing in — work either way. See the <Link href="/about">About page</Link>.
           </p>
           <div className="btn-row" style={{ flexWrap: 'nowrap' }}>
             <button className="btn small cta" onClick={() => choose('granted')}>Accept</button>
