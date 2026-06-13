@@ -228,6 +228,19 @@ td.neg { color: var(--red); }
 .chat-changes { border: 1px solid var(--cta); background: var(--cta-soft); border-radius: 10px; padding: 10px 12px; font-size: .82rem; }
 .chat-changes ul { margin: 6px 0; padding-left: 18px; }
 
+/* ---- cookie consent ---- */
+.cookie-banner {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 80;
+  background: var(--brand); color: #fff;
+  padding: 14px max(16px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  display: flex; gap: 16px; align-items: center; justify-content: center; flex-wrap: wrap;
+  box-shadow: 0 -4px 16px rgba(11, 61, 46, .22);
+}
+.cookie-banner p { margin: 0; font-size: .84rem; max-width: 760px; }
+.cookie-banner a { color: #f3c577; }
+.cookie-banner .btn.cookie-reject { background: transparent; color: #fff; border-color: #5a7d70; }
+.cookie-banner .btn.cookie-reject:hover { border-color: #fff; color: #fff; }
+
 /* ---- upload ---- */
 .dropzone {
   border: 2px dashed var(--line); border-radius: var(--radius); padding: 36px; text-align: center;

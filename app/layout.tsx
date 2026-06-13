@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import Script from 'next/script';
 import HeaderAuth from '@/components/HeaderAuth';
 import Providers from '@/components/Providers';
 import LogoMark from '@/components/Logo';
+import CookieConsent from '@/components/CookieConsent';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -12,23 +12,15 @@ export const metadata: Metadata = {
     'A free UK retirement calculator: project your pensions, savings, investments and property; find your earliest retirement date; compare scenarios; stress-test your plan.',
 };
 
-// Only load Microsoft Clarity on the production deployment, so local dev and
-// Vercel preview builds never send analytics traffic.
+// Analytics runs only on the production deployment, so local dev and Vercel
+// preview builds never send traffic. Loading itself is gated on consent
+// (see CookieConsent).
 const CLARITY_ON = process.env.VERCEL_ENV === 'production';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en-GB">
       <body>
-        {CLARITY_ON && (
-          <Script id="ms-clarity" strategy="afterInteractive">
-            {`(function(c,l,a,r,i,t,y){
-                c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-                t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-                y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-            })(window,document,"clarity","script","x6cmyc53rf");`}
-          </Script>
-        )}
         <Providers>
           <header className="site-header no-print">
             <div className="container">
@@ -78,6 +70,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </p>
             </div>
           </footer>
+          <CookieConsent enabled={CLARITY_ON} clarityId="x6cmyc53rf" />
         </Providers>
       </body>
     </html>
