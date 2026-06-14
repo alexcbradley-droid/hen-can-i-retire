@@ -27,9 +27,6 @@ export default function SiteHeader() {
           {LINKS.map((l) => (
             <Link key={l.href} href={l.href} onClick={() => setOpen(false)}>{l.label}</Link>
           ))}
-          <span className="nav-sep" aria-hidden="true" />
-          <a href="https://truebricks.online" className="nav-ext" target="_blank" rel="noopener noreferrer">True Bricks ↗</a>
-          <a href="https://aidailysignal.app" className="nav-ext" target="_blank" rel="noopener noreferrer">The AI Daily Signal ↗</a>
           <Link href="/start" className="btn btn-primary btn-sm nav-cta" onClick={() => setOpen(false)}>Start planning</Link>
         </nav>
         <HeaderAuth />

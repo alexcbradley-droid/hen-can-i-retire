@@ -5,6 +5,7 @@ import Script from 'next/script';
 import Providers from '@/components/Providers';
 import LogoMark from '@/components/Logo';
 import SiteHeader from '@/components/SiteHeader';
+import CrossSellStrip from '@/components/CrossSellStrip';
 import CookieConsent from '@/components/CookieConsent';
 import './globals.css';
 
@@ -52,6 +53,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         )}
         <Providers>
           <SiteHeader />
+          <CrossSellStrip />
           {children}
           <footer className="site-footer no-print">
             <div className="footer-disclaimer">
