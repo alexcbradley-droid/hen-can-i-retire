@@ -13,9 +13,49 @@ export default function OverviewTab({ projection }: { projection: ProjectionResu
 
   const goalMet = goal.targetMonthlyIncome != null ? m.sustainableMonthlyIncome >= goal.targetMonthlyIncome : null;
 
+  const dob = s.people[0]?.dateOfBirth;
+  const ageAt = (ym: string | null) => {
+    if (!ym || !dob) return null;
+    const by = +dob.slice(0, 4); const bm = +dob.slice(5, 7);
+    const [y, mo] = ym.split('-').map(Number);
+    let age = y - by; if (mo < bm) age -= 1; return age;
+  };
+  const earliestAge = ageAt(m.earliestRetirementDate);
+
   return (
     <div>
       {projection.warnings.map((w) => <p className="notice" key={w}>{w}</p>)}
+
+      {/* VERDICT HERO — the headline answer */}
+      <section className="verdict-hero">
+        <div className="vh-grid">
+          <div>
+            <span className={`vh-status ${m.successToPlanAge ? '' : 'bad'}`}>
+              <span className="dot" /> {m.successToPlanAge ? 'On track' : 'At risk'}
+            </span>
+            <p className="vh-lead">
+              {m.earliestRetirementDate
+                ? <>You could stop working as early as <b>{ymLabel(m.earliestRetirementDate)}</b>.</>
+                : <>On your current plan, your planned retirement date doesn&apos;t yet hold.</>}
+            </p>
+            <p className="vh-sub">
+              {m.successToPlanAge
+                ? `Your money lasts to age ${s.people[0].planToAge}, on today's assumptions.`
+                : `Funds run low around age ${m.runOutAge} — adjust savings, spending or dates below.`}
+            </p>
+          </div>
+          <div className="vh-figure">
+            <div className="f gold tnum">{earliestAge ?? '—'}</div>
+            <div className="l">Earliest retirement age</div>
+            {m.earliestRetirementDate && <div className="sub">{ymLabel(m.earliestRetirementDate)}</div>}
+          </div>
+          <div className="vh-figure">
+            <div className="f tnum">{gbp(m.sustainableMonthlyIncome)}</div>
+            <div className="l">Sustainable income / month</div>
+            <div className="sub">after tax, in today&apos;s money</div>
+          </div>
+        </div>
+      </section>
 
       <div className="tiles">
         <div className={`tile ${m.successToPlanAge ? 'good' : 'bad'}`}>

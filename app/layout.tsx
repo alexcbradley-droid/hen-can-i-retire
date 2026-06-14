@@ -1,15 +1,20 @@
 import type { Metadata } from 'next';
+import { Newsreader, Hanken_Grotesk, Spline_Sans_Mono } from 'next/font/google';
 import Link from 'next/link';
 import Script from 'next/script';
-import HeaderAuth from '@/components/HeaderAuth';
 import Providers from '@/components/Providers';
 import LogoMark from '@/components/Logo';
+import SiteHeader from '@/components/SiteHeader';
 import CookieConsent from '@/components/CookieConsent';
 import './globals.css';
 
+const serif = Newsreader({ subsets: ['latin'], weight: ['400', '500', '600'], display: 'swap', variable: '--font-serif', adjustFontFallback: false, fallback: ['Georgia', 'serif'] });
+const sans = Hanken_Grotesk({ subsets: ['latin'], weight: ['400', '500', '600', '700', '800'], display: 'swap', variable: '--font-sans' });
+const mono = Spline_Sans_Mono({ subsets: ['latin'], weight: ['400', '500'], display: 'swap', variable: '--font-mono' });
+
 const SITE_URL = 'https://whencaniretire.day';
 const DESCRIPTION =
-  'A free UK retirement calculator: project your pensions, savings, investments and property; find your earliest retirement date; compare scenarios; stress-test your plan.';
+  'A free UK retirement planner: see your earliest retirement date and sustainable income in seconds, with real 2026/27 UK tax built in. No sign-up; your data stays in your browser.';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -18,49 +23,27 @@ export const metadata: Metadata = {
   alternates: { canonical: '/' },
   applicationName: 'When Can I Retire?',
   openGraph: {
-    type: 'website',
-    siteName: 'When Can I Retire?',
-    locale: 'en_GB',
-    url: '/',
-    title: 'When Can I Retire? — UK retirement planner',
-    description: DESCRIPTION,
+    type: 'website', siteName: 'When Can I Retire?', locale: 'en_GB', url: '/',
+    title: 'When Can I Retire? — UK retirement planner', description: DESCRIPTION,
   },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'When Can I Retire? — UK retirement planner',
-    description: DESCRIPTION,
-  },
+  twitter: { card: 'summary_large_image', title: 'When Can I Retire? — UK retirement planner', description: DESCRIPTION },
 };
 
-// Analytics runs only on the production deployment, so local dev and Vercel
-// preview builds never send traffic.
 const ANALYTICS_ON = process.env.VERCEL_ENV === 'production';
 const GA_ID = 'G-QM4TF66QYS';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-GB">
+    <html lang="en-GB" className={`${serif.variable} ${sans.variable} ${mono.variable}`}>
       <body>
         {ANALYTICS_ON && (
           <>
-            {/* Google Consent Mode v2: set defaults to denied BEFORE the GA
-                library loads, so no analytics cookies are set until consent.
-                Returning visitors who already accepted are upgraded here. */}
             <Script id="ga-consent-default" strategy="beforeInteractive">
               {`window.dataLayer = window.dataLayer || [];
                 function gtag(){dataLayer.push(arguments);}
                 window.gtag = gtag;
-                gtag('consent', 'default', {
-                  ad_storage: 'denied',
-                  ad_user_data: 'denied',
-                  ad_personalization: 'denied',
-                  analytics_storage: 'denied'
-                });
-                try {
-                  if (localStorage.getItem('wcir-cookie-consent-v1') === 'granted') {
-                    gtag('consent', 'update', { analytics_storage: 'granted' });
-                  }
-                } catch (e) {}
+                gtag('consent', 'default', { ad_storage:'denied', ad_user_data:'denied', ad_personalization:'denied', analytics_storage:'denied' });
+                try { if (localStorage.getItem('wcir-cookie-consent-v1') === 'granted') { gtag('consent','update',{ analytics_storage:'granted' }); } } catch (e) {}
                 gtag('js', new Date());
                 gtag('config', '${GA_ID}');`}
             </Script>
@@ -68,66 +51,64 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </>
         )}
         <Providers>
-          <header className="site-header no-print">
-            <div className="container">
-              <Link href="/" className="brand">
-                <LogoMark />
-                When can I <span>retire?</span>
-              </Link>
-              <nav className="main-nav">
-                <Link href="/plan">Planner</Link>
-                <Link href="/plans">My plans</Link>
-                <Link href="/compare">Compare</Link>
-                <Link href="/help">Help</Link>
-                <Link href="/methodology">Methodology</Link>
-                <Link href="/about">About</Link>
-              </nav>
-              <HeaderAuth />
-            </div>
-          </header>
+          <SiteHeader />
           {children}
           <footer className="site-footer no-print">
+            <div className="footer-disclaimer">
+              <div className="container">
+                <span className="ico" aria-hidden="true">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" /><path d="M12 9v4M12 17h.01" /></svg>
+                </span>
+                <p>
+                  <b>This tool provides information and guidance only — it is not financial advice.</b> Projections
+                  are estimates based on the figures and assumptions you provide and will differ from real
+                  outcomes. The value of investments can go down as well as up. For free guidance see{' '}
+                  <a href="https://www.moneyhelper.org.uk/en/getting-help-and-advice/financial-advisers" rel="noopener noreferrer" target="_blank">MoneyHelper</a>{' '}
+                  or, if you are 50 or over,{' '}
+                  <a href="https://www.moneyhelper.org.uk/en/pensions-and-retirement/pension-wise" rel="noopener noreferrer" target="_blank">Pension Wise</a>;
+                  for regulated advice, an FCA-authorised adviser.
+                </p>
+              </div>
+            </div>
             <div className="container">
-              <p>
-                <b>This tool provides information and guidance only — it is not financial advice.</b> If you are
-                unsure about retirement decisions, speak to a regulated financial adviser (find one via{' '}
-                <a href="https://www.moneyhelper.org.uk/en/getting-help-and-advice/financial-advisers" rel="noopener noreferrer" target="_blank">MoneyHelper</a>).
-                If you are 50 or over, <a href="https://www.moneyhelper.org.uk/en/pensions-and-retirement/pension-wise" rel="noopener noreferrer" target="_blank">Pension Wise</a>{' '}
-                offers free, impartial pension guidance backed by government.
-              </p>
-              <p>
-                Projections are estimates, not guarantees: they depend on assumptions about growth, inflation,
-                charges and tax that may not be borne out, and on the accuracy of the information you enter.
-                The value of investments can go down as well as up and you may get back less than you invest.
-                Tax treatment depends on individual circumstances and rules may change. Calculations use
-                England, Wales &amp; Northern Ireland tax bands for 2026/27 — Scottish income tax differs.
-                Past performance is not a reliable indicator of future results.
-              </p>
-              <p>
-                Your data stays in your browser by default. If you sign up / in with Google, your
-                scenarios are saved to your account so you can pick them up on any device. If you use the
-                AI features (chat assistant or spreadsheet upload), the plan or file content you provide is
-                sent to our AI provider (Anthropic) solely to answer your request and is not used to train
-                models — avoid including names, addresses or account numbers you would not want processed.
-              </p>
-              <p>
-                We use privacy-conscious analytics (Microsoft Clarity and Google Analytics) to understand how
-                the site is used and improve it. They set cookies only if you accept — until then Google
-                Analytics runs without cookies (Consent Mode), and Microsoft Clarity does not run at all.
-                No data is sold, ever.
-              </p>
-              <div className="footer-crosssell">
-                <h2>More from this maker</h2>
-                <ul>
-                  <li>
-                    <a href="https://truebricks.online" target="_blank" rel="noopener noreferrer">True Bricks</a>{' '}
-                    — work out the true total cost of owning any UK home: mortgage, energy, maintenance, risk and area data.
-                  </li>
-                  <li>
-                    <a href="https://aidailysignal.app" target="_blank" rel="noopener noreferrer">The AI Daily Signal</a>{' '}
-                    — one daily brief on everything that mattered in artificial intelligence, in plain English.
-                  </li>
-                </ul>
+              <div className="footer-grid">
+                <div>
+                  <Link href="/" className="brand" style={{ color: '#fff', marginBottom: 14 }}>
+                    <LogoMark size={32} />
+                    <span style={{ color: 'var(--gold)' }}>When can I retire?</span>
+                  </Link>
+                  <p style={{ color: '#9fb8ad', fontSize: '.92rem', maxWidth: '34ch' }}>
+                    A free UK retirement planner. Your data stays in your browser.
+                  </p>
+                  <span className="recency"><span className="pulse" /> Tax year 2026/27 · last reviewed Jun 2026</span>
+                </div>
+                <div>
+                  <h5>Plan</h5>
+                  <Link href="/start">Start planning</Link>
+                  <Link href="/plan?demo=1">Sample plan</Link>
+                  <Link href="/plans">My plans</Link>
+                  <Link href="/compare">Compare plans</Link>
+                </div>
+                <div>
+                  <h5>Understand</h5>
+                  <Link href="/methodology">Methodology &amp; sources</Link>
+                  <Link href="/help">Help &amp; what to enter</Link>
+                  <Link href="/about">About</Link>
+                </div>
+                <div>
+                  <h5>Free UK guidance</h5>
+                  <a href="https://www.moneyhelper.org.uk/" rel="noopener noreferrer" target="_blank">MoneyHelper ↗</a>
+                  <a href="https://www.moneyhelper.org.uk/en/pensions-and-retirement/pension-wise" rel="noopener noreferrer" target="_blank">Pension Wise (50+) ↗</a>
+                  <a href="https://www.gov.uk/check-state-pension" rel="noopener noreferrer" target="_blank">GOV.UK State Pension ↗</a>
+                </div>
+              </div>
+              <div className="footer-bottom">
+                <span>© 2026 When Can I Retire? · guidance, not financial advice</span>
+                <span>
+                  Privacy-conscious analytics, loaded only if you accept cookies. From the same maker:{' '}
+                  <a href="https://truebricks.online" rel="noopener noreferrer" target="_blank">True Bricks</a> ·{' '}
+                  <a href="https://aidailysignal.app" rel="noopener noreferrer" target="_blank">The AI Daily Signal</a>
+                </span>
               </div>
             </div>
           </footer>
