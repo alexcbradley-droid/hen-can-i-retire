@@ -105,7 +105,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <div className="footer-bottom">
                 <span>© 2026 When Can I Retire? · guidance, not financial advice</span>
                 <span>
-                  Privacy-conscious analytics, loaded only if you accept cookies. From the same maker:{' '}
+                  Your plan data stays in your browser. Privacy-conscious analytics load only if you
+                  accept cookies. If you use the AI assistant, your request is sent to Anthropic
+                  solely to answer it — not to train models.
+                </span>
+                <span>
+                  From the same maker:{' '}
                   <a href="https://truebricks.online" rel="noopener noreferrer" target="_blank">True Bricks</a> ·{' '}
                   <a href="https://aidailysignal.app" rel="noopener noreferrer" target="_blank">The AI Daily Signal</a>
                 </span>

@@ -141,6 +141,7 @@ export default function QuickStart() {
                     {step.unit ? <span className="unit">{step.unit}</span> : null}
                   </div>
                   <input className="qs-range" type="range" min={step.min} max={step.max} step={step.step}
+                    aria-label={step.q} aria-valuetext={`${step.fmt(a[step.key as keyof Answers])} ${step.unit ?? ''}`.trim()}
                     value={a[step.key as keyof Answers]} onChange={(e) => set(step.key as keyof Answers, +e.target.value)} />
                   <div className="qs-scale"><span>{step.fmt(step.min!)}</span><span>{step.fmt(step.max!)}</span></div>
                 </>
